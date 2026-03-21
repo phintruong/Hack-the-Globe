@@ -5,19 +5,19 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 230 94% 19%;
+    --foreground: 0 0% 5%;
     --card: 0 0% 100%;
-    --card-foreground: 230 94% 19%;
+    --card-foreground: 0 0% 5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 230 94% 19%;
+    --popover-foreground: 0 0% 5%;
     --primary: 199 100% 36%;
     --primary-foreground: 0 0% 100%;
     --secondary: 193 77% 95%;
-    --secondary-foreground: 230 94% 19%;
+    --secondary-foreground: 0 0% 5%;
     --muted: 193 77% 95%;
     --muted-foreground: 213 50% 45%;
     --accent: 190 79% 92%;
-    --accent-foreground: 230 94% 19%;
+    --accent-foreground: 0 0% 5%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 193 77% 88%;
@@ -27,7 +27,7 @@
 
     /* Landing page vars */
     --landing-bg: #ffffff;
-    --landing-text: #03045e;
+    --landing-text: #0d0d0d;
     --landing-border: #caf0f8;
     --landing-muted: #4a7c9b;
   }
@@ -51,7 +51,7 @@
   border: 1px solid #ade8f4;
   border-radius: 4px;
   background: transparent;
-  color: #03045e;
+  color: #0d0d0d;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -103,7 +103,7 @@
   display: block;
   padding: 0.5rem 1rem;
   font-size: 0.8rem;
-  color: #023e8a;
+  color: #333;
   text-decoration: none;
   transition: all 0.15s;
 }
@@ -118,7 +118,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #023e8a;
+  color: #333;
   text-decoration: none;
   border: 1px solid #ade8f4;
   padding: 6px 14px;

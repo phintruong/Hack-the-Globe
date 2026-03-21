@@ -4,7 +4,7 @@ import DitherCanvas from "@/components/DitherCanvas";
 
 export default function Home() {
   return (
-    <div className="font-[Helvetica_Neue,Helvetica,Arial,sans-serif] leading-[1.4] overflow-x-hidden bg-white text-[#03045e]">
+    <div className="font-[Helvetica_Neue,Helvetica,Arial,sans-serif] leading-[1.4] overflow-x-hidden bg-white text-black">
       {/* Header */}
       <header className="fixed top-0 left-0 w-full px-8 py-5 z-[100] flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-[#caf0f8]">
         <div className="text-xl font-semibold tracking-tight text-[#0077b6]">
@@ -38,14 +38,14 @@ export default function Home() {
           <span className="inline-block bg-[#0077b6] text-white text-xs font-semibold uppercase tracking-wider px-4 py-1.5 rounded-sm mb-8">
             100% ADA &amp; WCAG Compliant
           </span>
-          <h1 className="text-[clamp(2.5rem,6vw,5rem)] leading-[1.05] mb-6 font-bold tracking-tight text-[#03045e]">
+          <h1 className="text-[clamp(2.5rem,6vw,5rem)] leading-[1.05] mb-6 font-bold tracking-tight text-black">
             Prepare with{" "}
             <br className="max-md:hidden" />
             UniVoice{" "}
             <br />
             Interview freely
           </h1>
-          <p className="text-lg max-w-[600px] text-[#023e8a]/60 mb-10 leading-relaxed">
+          <p className="text-lg max-w-[600px] text-black/60 mb-10 leading-relaxed">
             AI-powered interview platform for deaf and hard-of-hearing
             candidates, real-time communication with seamless live
             interpretation for interviewers.
@@ -72,17 +72,17 @@ export default function Home() {
                 className="opacity-80"
               />
               <div>
-                <p className="text-lg font-semibold text-[#03045e]">Real-time ASL Translation</p>
-                <p className="text-sm text-[#023e8a]/50">With zero latency</p>
+                <p className="text-lg font-semibold text-black">Real-time ASL Translation</p>
+                <p className="text-sm text-black/50">With zero latency</p>
               </div>
             </div>
             <div className="text-center">
               <p className="text-4xl font-bold text-[#0077b6]">50K+</p>
-              <p className="text-sm text-[#023e8a]/60 mt-1">Deaf candidates supported</p>
+              <p className="text-sm text-black/60 mt-1">Deaf candidates supported</p>
             </div>
             <div className="text-right">
               <p className="text-4xl font-bold text-[#0077b6]">95%</p>
-              <p className="text-sm text-[#023e8a]/60 mt-1">Interview success rate</p>
+              <p className="text-sm text-black/60 mt-1">Interview success rate</p>
             </div>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function Home() {
                 practice in a way that fits how I communicate, and that gave me
                 so much more confidence.&rdquo;
               </blockquote>
-              <p className="text-sm text-[#023e8a]/50">&mdash; Sarah, IT Helpdesk</p>
+              <p className="text-sm text-black/50">&mdash; Sarah, IT Helpdesk</p>
               <div className="flex gap-3 mt-4">
                 <a href="#" className="link-small">Read White Paper</a>
                 <a href="#" className="link-small-accent">Read the Story</a>
@@ -134,7 +134,7 @@ export default function Home() {
                 the candidate, not the barriers. UniVoice streamlined our hiring
                 process and making it more inclusive.&rdquo;
               </blockquote>
-              <p className="text-sm text-[#023e8a]/50">&mdash; Bobby, Hiring Manager</p>
+              <p className="text-sm text-black/50">&mdash; Bobby, Hiring Manager</p>
               <div className="flex gap-3 mt-4">
                 <a href="#" className="link-small">Read White Paper</a>
                 <a href="#" className="link-small-accent">Read the Story</a>
@@ -150,7 +150,7 @@ export default function Home() {
           <p className="inline-block bg-[#0077b6] text-white text-sm font-semibold px-4 py-1.5 rounded-sm mb-10">
             We have partnered with more than 50 companies worldwide
           </p>
-          <div className="flex flex-wrap items-center justify-between gap-8 text-[#03045e]/40">
+          <div className="flex flex-wrap items-center justify-between gap-8 text-black/40">
             <span className="text-2xl font-bold tracking-tight">KPMG</span>
             <span className="text-2xl font-bold italic">Disney</span>
             <span className="text-2xl font-bold">amazon</span>
@@ -165,8 +165,8 @@ export default function Home() {
       {/* Will UniVoice work for you? */}
       <section id="about" className="py-24 border-t border-[#caf0f8] relative z-[5] bg-white">
         <div className="max-w-[1200px] mx-auto px-8 text-center">
-          <h2 className="text-3xl font-bold mb-6 text-[#03045e]">Will UniVoice work for you?</h2>
-          <p className="inline-block bg-[#caf0f8] text-[#03045e] text-sm leading-relaxed px-6 py-4 rounded-sm max-w-[700px]">
+          <h2 className="text-3xl font-bold mb-6 text-black">Will UniVoice work for you?</h2>
+          <p className="inline-block bg-[#caf0f8] text-black text-sm leading-relaxed px-6 py-4 rounded-sm max-w-[700px]">
             Short answer: yes. Whether you&rsquo;re a deaf or hard-of-hearing
             candidate preparing for an upcoming interview, or an organization
             looking to make hiring more accessible, UniVoice gives you the

@@ -94,7 +94,7 @@ export function WordBuilder({
   ].join(" ");
 
   return (
-    <div className="space-y-2 text-[#03045e]">
+    <div className="space-y-2 text-black">
       {/* Current input */}
       <div className="font-mono text-sm bg-[#caf0f8]/40 rounded-lg p-2.5 min-h-[2rem] flex flex-wrap items-center gap-1 border border-[#ade8f4]">
         {completedWords.map((word, i) => (
@@ -106,12 +106,12 @@ export function WordBuilder({
           </span>
         ))}
         {letters.length > 0 ? (
-          <span className="text-[#03045e]">
+          <span className="text-black">
             {letters.join("").toLowerCase()}
             <span className="animate-pulse text-[#90e0ef]">|</span>
           </span>
         ) : completedWords.length === 0 ? (
-          <span className="text-[#023e8a]/40 italic text-xs">
+          <span className="text-black/40 italic text-xs">
             Start signing...
           </span>
         ) : null}
@@ -124,7 +124,7 @@ export function WordBuilder({
             <button
               key={word}
               onClick={() => handleSuggestionClick(word)}
-              className="px-2.5 py-1 text-xs bg-[#caf0f8] hover:bg-[#0096c7] text-[#03045e] hover:text-white rounded-full transition-colors border border-[#ade8f4] hover:border-[#0096c7]"
+              className="px-2.5 py-1 text-xs bg-[#caf0f8] hover:bg-[#0096c7] text-black hover:text-white rounded-full transition-colors border border-[#ade8f4] hover:border-[#0096c7]"
             >
               {word}
             </button>
@@ -137,21 +137,21 @@ export function WordBuilder({
         <button
           onClick={handleBackspace}
           disabled={letters.length === 0 && completedWords.length === 0}
-          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-[#03045e] px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
+          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-black px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
         >
           Bksp
         </button>
         <button
           onClick={handleSpace}
           disabled={letters.length === 0}
-          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-[#03045e] px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
+          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-black px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
         >
           Space
         </button>
         <button
           onClick={handleClear}
           disabled={letters.length === 0 && completedWords.length === 0}
-          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-[#03045e] px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
+          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-black px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
         >
           Clear
         </button>
