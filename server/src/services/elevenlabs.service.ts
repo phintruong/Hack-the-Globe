@@ -20,7 +20,7 @@ export async function textToSpeech(text: string): Promise<Buffer> {
           },
           body: JSON.stringify({
             text,
-            model_id: "eleven_turbo_v2_5",
+            model_id: "eleven_flash_v2_5",
             voice_settings: {
               stability: 0.5,
               similarity_boost: 0.75,
@@ -33,7 +33,10 @@ export async function textToSpeech(text: string): Promise<Buffer> {
         const arrayBuffer = await response.arrayBuffer();
         return Buffer.from(arrayBuffer);
       }
-      console.warn("ElevenLabs failed, falling back to OpenAI TTS");
+      const errBody = await response.text();
+      console.warn(
+        `ElevenLabs failed [${response.status}]: ${errBody}. Falling back to OpenAI TTS`
+      );
     } catch (err) {
       console.warn("ElevenLabs error, falling back to OpenAI TTS:", err);
     }
