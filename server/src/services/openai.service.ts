@@ -1,0 +1,90 @@
+import OpenAI from "openai";
+
+let _openai: OpenAI | null = null;
+
+export function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return _openai;
+}
+
+export interface STARFeedback {
+  situation: number;
+  task: number;
+  action: number;
+  result: number;
+  improvements: string[];
+  polishedAnswer: string;
+}
+
+const STAR_PROMPT = `You are an interview coach evaluating answers using the STAR method.
+
+Rate each component 0-100:
+- Situation: Did the candidate set the scene clearly?
+- Task: Did they explain what they needed to accomplish?
+- Action: Did they describe specific actions they took?
+- Result: Did they share measurable outcomes?
+
+Also provide:
+- 2-3 specific improvements
+- A polished version of their answer
+
+Respond in this exact JSON format:
+{
+  "situation": <number>,
+  "task": <number>,
+  "action": <number>,
+  "result": <number>,
+  "improvements": ["<improvement1>", "<improvement2>"],
+  "polishedAnswer": "<polished version>"
+}`;
+
+const POLISH_PROMPT = `You are a professional interview coach. Polish the following interview answer to be more articulate and professional while preserving the candidate's original meaning and personality. Keep it concise. Return only the polished text, nothing else.`;
+
+export async function evaluateAnswer(
+  question: string,
+  answer: string
+): Promise<STARFeedback> {
+  const [starResult, polishResult] = await Promise.all([
+    getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: STAR_PROMPT },
+        {
+          role: "user",
+          content: `Question: ${question}\n\nAnswer: ${answer}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+    getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: POLISH_PROMPT },
+        {
+          role: "user",
+          content: `Question: ${question}\n\nAnswer: ${answer}`,
+        },
+      ],
+      temperature: 0.5,
+    }),
+  ]);
+
+  const starData = JSON.parse(
+    starResult.choices[0].message.content || "{}"
+  );
+
+  return {
+    situation: starData.situation ?? 0,
+    task: starData.task ?? 0,
+    action: starData.action ?? 0,
+    result: starData.result ?? 0,
+    improvements: starData.improvements ?? [],
+    polishedAnswer:
+      polishResult.choices[0].message.content || answer,
+  };
+}

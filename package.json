@@ -1,0 +1,11 @@
+{
+  "name": "sign-language-interview",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter client dev\" \"pnpm --filter server dev\"",
+    "build": "pnpm --filter client build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
