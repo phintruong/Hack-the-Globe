@@ -24,6 +24,6 @@ pnpm --filter server dev     # backend only
 - Text formatting is confidence-gated: < 60% skips autocorrect
 - Short text (< 20 chars) skips LLM polish → straight to TTS
 - STAR eval + answer polish always run as `Promise.all()`
-- 24 ASL letters supported (all static signs): A–Y excluding J and Z (require motion)
+- 16 ASL letters: A, B, C, D, F, G, H, I, K, L, P, Q, V, W, X, Y (only letters with unique curl+direction signatures)
 - Text input fallback always visible
 - Chrome-only target

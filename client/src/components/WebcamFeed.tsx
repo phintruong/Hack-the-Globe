@@ -20,10 +20,15 @@ export function WebcamFeed({ onFrame, canvasRef, className }: WebcamFeedProps) {
   const animFrameRef = useRef<number>(0);
 
   const startDetection = useCallback(() => {
-    const loop = () => {
-      const video = webcamRef.current?.video;
-      if (video && video.readyState >= 2 && onFrame) {
-        onFrame(video);
+    let lastTime = 0;
+    const THROTTLE_MS = 600; // ~3 fps
+    const loop = (now: number) => {
+      if (now - lastTime >= THROTTLE_MS) {
+        const video = webcamRef.current?.video;
+        if (video && video.readyState >= 2 && onFrame) {
+          onFrame(video);
+        }
+        lastTime = now;
       }
       animFrameRef.current = requestAnimationFrame(loop);
     };

@@ -58,6 +58,21 @@ export function WordBuilder({
     }
   }, [letters.length, completedWords.length]);
 
+  // Keyboard backspace support
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Backspace") {
+        // Don't intercept if user is typing in an input/textarea
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        e.preventDefault();
+        handleBackspace();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleBackspace]);
+
   const handleClear = useCallback(() => {
     setLetters([]);
     setConfidences([]);
