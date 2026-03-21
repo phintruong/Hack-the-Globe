@@ -35,7 +35,7 @@ export default function DitherCanvas() {
     }
 
     function draw() {
-      ctx!.fillStyle = "#f5f5f5";
+      ctx!.fillStyle = "#ffffff";
       ctx!.fillRect(0, 0, width, height);
 
       const gridSize = 6;
@@ -62,7 +62,15 @@ export default function DitherCanvas() {
           const threshold = getThreshold(x, y);
 
           if (intensity + threshold > 0.5) {
-            ctx!.fillStyle = "#111111";
+            // Use blues from the palette with varying opacity based on intensity
+            const blend = intensity;
+            if (blend > 0.7) {
+              ctx!.fillStyle = "#0077b6";
+            } else if (blend > 0.4) {
+              ctx!.fillStyle = "#00b4d8";
+            } else {
+              ctx!.fillStyle = "#90e0ef";
+            }
             ctx!.fillRect(
               x * gridSize,
               y * gridSize,

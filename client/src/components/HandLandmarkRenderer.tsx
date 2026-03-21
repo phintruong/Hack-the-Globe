@@ -29,7 +29,7 @@ export function useDrawLandmarks() {
 
       for (const hand of landmarks) {
         // Draw connections
-        ctx.strokeStyle = "#00FF00";
+        ctx.strokeStyle = "#00b4d8";
         ctx.lineWidth = 2;
         for (const [start, end] of CONNECTIONS) {
           const a = hand[start];
@@ -41,7 +41,7 @@ export function useDrawLandmarks() {
         }
 
         // Draw landmarks
-        ctx.fillStyle = "#FF0000";
+        ctx.fillStyle = "#0077b6";
         for (const lm of hand) {
           ctx.beginPath();
           ctx.arc((1 - lm.x) * width, lm.y * height, 4, 0, 2 * Math.PI);

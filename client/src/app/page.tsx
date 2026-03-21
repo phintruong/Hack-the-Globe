@@ -1,166 +1,221 @@
 import Link from "next/link";
+import Image from "next/image";
 import DitherCanvas from "@/components/DitherCanvas";
 
 export default function Home() {
   return (
-    <div className="font-[Helvetica_Neue,Helvetica,Arial,sans-serif] leading-[1.4] overflow-x-hidden">
+    <div className="font-[Helvetica_Neue,Helvetica,Arial,sans-serif] leading-[1.4] overflow-x-hidden bg-white text-[#03045e]">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full p-8 z-[100] flex justify-between items-center">
-        <div className="text-[2rem] font-normal tracking-[-0.04em] text-[var(--landing-text)]">
-          SignSpeak
+      <header className="fixed top-0 left-0 w-full px-8 py-5 z-[100] flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-[#caf0f8]">
+        <div className="text-xl font-semibold tracking-tight text-[#0077b6]">
+          UniVoice
         </div>
-        <nav className="flex gap-4 max-md:hidden">
-          <Link href="/training" className="btn-pill">
-            Training
-          </Link>
-          <Link href="/live" className="btn-pill">
-            Live Mode
-          </Link>
+        <nav className="flex items-center gap-3 max-md:hidden">
+          <div className="relative group">
+            <button className="nav-btn">Platform</button>
+            <div className="dropdown-menu">
+              <Link href="/training" className="dropdown-item">Training Mode</Link>
+              <Link href="/live" className="dropdown-item">Live Interview</Link>
+            </div>
+          </div>
+          <div className="relative group">
+            <button className="nav-btn">Pricing</button>
+            <div className="dropdown-menu">
+              <a href="#" className="dropdown-item">Personal</a>
+              <a href="#" className="dropdown-item">Enterprise</a>
+              <a href="#" className="dropdown-item">Non-Profit</a>
+            </div>
+          </div>
+          <a href="#about" className="nav-btn">Learn More</a>
+          <Link href="/training" className="nav-btn-primary">Login</Link>
         </nav>
       </header>
 
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-[var(--landing-bg)]">
+      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
         <DitherCanvas />
-        <div className="max-w-[1400px] mx-auto px-8 relative z-[2] w-full">
-          <span className="landing-label">AI Interview Platform</span>
-          <h1 className="text-[clamp(4rem,12vw,11rem)] leading-[0.9] mb-8 text-[var(--landing-text)] font-normal tracking-[-0.02em]">
-            SIGN
-            <br />
-            SPEAK
-          </h1>
-          <p className="text-2xl max-w-[600px] text-[var(--landing-muted)] mb-12 font-light">
-            Breaking communication barriers in interviews. AI-powered
-            sign language recognition with real-time speech synthesis
-            for deaf and hard-of-hearing candidates.
-          </p>
-          <Link href="/training" className="link-small">
-            START TRAINING &#8853;
-          </Link>
-        </div>
-      </section>
-
-      {/* Feature Strip */}
-      <section className="py-16 bg-[var(--landing-bg)] relative z-[5] border-t border-[var(--landing-border)]">
-        <div className="max-w-[1400px] mx-auto px-8">
-          <div className="flex flex-col md:flex-row justify-between items-end gap-8">
-            <div className="flex-1 pr-8">
-              <span className="landing-label">Recognition</span>
-              <p className="text-xl leading-[1.3] text-[var(--landing-text)]">
-                Client-side hand tracking at 30fps with zero server latency
-                using MediaPipe.
-              </p>
-            </div>
-            <div className="flex-1 pr-8">
-              <span className="landing-label">Privacy</span>
-              <p className="text-xl leading-[1.3] text-[var(--landing-text)]">
-                All video processing stays on-device. No camera data ever
-                leaves your browser.
-              </p>
-            </div>
-            <div className="flex-1 text-right">
-              <span className="landing-label">ASL Letters</span>
-              <p className="text-xl leading-[1.3] text-[var(--landing-text)]">
-                A, B, C, D, I, L, O, V, W, Y
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Big Text Section */}
-      <section className="py-32 bg-white relative z-[5] border-t border-[var(--landing-border)]">
-        <div className="max-w-[1400px] mx-auto px-8">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-3">
-              <span className="landing-label">How It Works</span>
-            </div>
-            <div className="md:col-span-8 md:col-start-5 text-[2.5rem] max-md:text-2xl leading-[1.2] font-normal text-[var(--landing-text)]">
-              Fingerspell into your webcam and watch your signs{" "}
-              <span className="highlight">
-                transform into natural speech
-              </span>{" "}
-              in real time. Practice interviews with{" "}
-              <span className="highlight">STAR-method feedback</span> from AI,
-              or go live with{" "}
-              <span className="highlight">bidirectional communication</span>{" "}
-              — sign-to-speech and speech-to-text working together.
-              <br />
-              <br />
-              <Link href="/live" className="link-small mt-4">
-                TRY LIVE MODE &#8853;
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Visual Section — Mode Selection */}
-      <section className="h-[80vh] relative border-t border-b border-[var(--landing-border)] flex items-center justify-center overflow-hidden bg-[#ececec]">
-        <div className="flex gap-16 max-md:flex-col max-md:gap-8">
-          <Link href="/training" className="circle-trigger">
-            Training
-            <br />
-            Mode
-          </Link>
-          <Link href="/live" className="circle-trigger">
-            Live
-            <br />
-            Interview
-          </Link>
-        </div>
-        <div className="absolute bottom-8 left-8">
-          <span className="landing-label">Select Mode</span>
-        </div>
-        <div className="absolute bottom-8 right-8">
-          <span className="text-[0.7rem] uppercase tracking-wider text-[var(--landing-muted)]">
-            Chrome recommended
+        <div className="max-w-[1200px] mx-auto px-8 relative z-[2] w-full">
+          <span className="inline-block bg-[#0077b6] text-white text-xs font-semibold uppercase tracking-wider px-4 py-1.5 rounded-sm mb-8">
+            100% ADA &amp; WCAG Compliant
           </span>
+          <h1 className="text-[clamp(2.5rem,6vw,5rem)] leading-[1.05] mb-6 font-bold tracking-tight text-[#03045e]">
+            Prepare with{" "}
+            <br className="max-md:hidden" />
+            UniVoice{" "}
+            <br />
+            Interview freely
+          </h1>
+          <p className="text-lg max-w-[600px] text-[#023e8a]/60 mb-10 leading-relaxed">
+            AI-powered interview platform for deaf and hard-of-hearing
+            candidates, real-time communication with seamless live
+            interpretation for interviewers.
+          </p>
+          <Link
+            href="/training"
+            className="inline-flex items-center gap-2 bg-[#0077b6] text-white font-semibold text-sm uppercase tracking-wider px-6 py-3 rounded-sm hover:bg-[#023e8a] transition-colors"
+          >
+            Start Learning
+          </Link>
+        </div>
+      </section>
+
+      {/* Stats Strip */}
+      <section className="py-12 border-t border-[#caf0f8] relative z-[5] bg-white">
+        <div className="max-w-[1200px] mx-auto px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/images/sign-language-asl.png"
+                alt="ASL icon"
+                width={48}
+                height={48}
+                className="opacity-80"
+              />
+              <div>
+                <p className="text-lg font-semibold text-[#03045e]">Real-time ASL Translation</p>
+                <p className="text-sm text-[#023e8a]/50">With zero latency</p>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-4xl font-bold text-[#0077b6]">50K+</p>
+              <p className="text-sm text-[#023e8a]/60 mt-1">Deaf candidates supported</p>
+            </div>
+            <div className="text-right">
+              <p className="text-4xl font-bold text-[#0077b6]">95%</p>
+              <p className="text-sm text-[#023e8a]/60 mt-1">Interview success rate</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-24 border-t border-[#caf0f8] relative z-[5] bg-white">
+        <div className="max-w-[1200px] mx-auto px-8 space-y-16">
+          {/* Sarah */}
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="w-32 h-32 rounded-full overflow-hidden shrink-0 border-2 border-[#ade8f4]">
+              <Image
+                src="/images/sarah.jpeg"
+                alt="Sarah"
+                width={128}
+                height={128}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <div className="flex-1">
+              <blockquote className="text-lg italic text-[#0077b6] leading-relaxed mb-4">
+                &ldquo;It&rsquo;s really hard to find interview prep that works for
+                someone like me. UniVoice made it feel natural, I could actually
+                practice in a way that fits how I communicate, and that gave me
+                so much more confidence.&rdquo;
+              </blockquote>
+              <p className="text-sm text-[#023e8a]/50">&mdash; Sarah, IT Helpdesk</p>
+              <div className="flex gap-3 mt-4">
+                <a href="#" className="link-small">Read White Paper</a>
+                <a href="#" className="link-small-accent">Read the Story</a>
+              </div>
+            </div>
+          </div>
+
+          {/* Bobby */}
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="w-32 h-32 rounded-full overflow-hidden shrink-0 border-2 border-[#ade8f4]">
+              <Image
+                src="/images/bobby.avif"
+                alt="Bobby"
+                width={128}
+                height={128}
+                className="object-cover w-full h-full"
+              />
+            </div>
+            <div className="flex-1">
+              <blockquote className="text-lg italic text-[#0077b6] leading-relaxed mb-4">
+                &ldquo;The live interpretation was seamless, and we could focus on
+                the candidate, not the barriers. UniVoice streamlined our hiring
+                process and making it more inclusive.&rdquo;
+              </blockquote>
+              <p className="text-sm text-[#023e8a]/50">&mdash; Bobby, Hiring Manager</p>
+              <div className="flex gap-3 mt-4">
+                <a href="#" className="link-small">Read White Paper</a>
+                <a href="#" className="link-small-accent">Read the Story</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Partners */}
+      <section className="py-20 border-t border-[#caf0f8] relative z-[5] bg-white">
+        <div className="max-w-[1200px] mx-auto px-8">
+          <p className="inline-block bg-[#0077b6] text-white text-sm font-semibold px-4 py-1.5 rounded-sm mb-10">
+            We have partnered with more than 50 companies worldwide
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-8 text-[#03045e]/40">
+            <span className="text-2xl font-bold tracking-tight">KPMG</span>
+            <span className="text-2xl font-bold italic">Disney</span>
+            <span className="text-2xl font-bold">amazon</span>
+            <span className="text-2xl font-bold">GE</span>
+            <span className="text-2xl font-bold">Honda</span>
+            <span className="text-2xl font-bold tracking-tight">UNDP</span>
+            <span className="text-2xl font-bold">IBM</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Will UniVoice work for you? */}
+      <section id="about" className="py-24 border-t border-[#caf0f8] relative z-[5] bg-white">
+        <div className="max-w-[1200px] mx-auto px-8 text-center">
+          <h2 className="text-3xl font-bold mb-6 text-[#03045e]">Will UniVoice work for you?</h2>
+          <p className="inline-block bg-[#caf0f8] text-[#03045e] text-sm leading-relaxed px-6 py-4 rounded-sm max-w-[700px]">
+            Short answer: yes. Whether you&rsquo;re a deaf or hard-of-hearing
+            candidate preparing for an upcoming interview, or an organization
+            looking to make hiring more accessible, UniVoice gives you the
+            tools, practice, and real-time support to make every interview
+            seamless.
+          </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-24 bg-[var(--landing-bg)] text-[0.8rem] border-t border-[var(--landing-border)]">
-        <div className="max-w-[1400px] mx-auto px-8">
+      <footer className="py-16 border-t border-[#caf0f8] text-sm bg-[#03045e] text-white">
+        <div className="max-w-[1200px] mx-auto px-8">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-6 flex flex-col gap-2">
-              <h3 className="mb-4 text-[var(--landing-text)]">
-                SignSpeak
+            <div className="md:col-span-4 flex flex-col gap-2">
+              <h3 className="text-xl font-semibold text-[#48cae4] mb-1">
+                UniVoice
               </h3>
-              <p className="text-[var(--landing-muted)] max-w-[300px]">
-                AI-powered interview platform for deaf and hard-of-hearing
-                candidates. Built for Hack the Globe.
+              <p className="text-white/50">
+                Empowering Every Voice in Hiring
               </p>
             </div>
-            <div className="md:col-span-3 flex flex-col gap-2">
-              <div className="text-[var(--landing-muted)] mb-4 text-[0.7rem] uppercase">
-                Platform
+            <div className="md:col-span-4 flex flex-col gap-2">
+              <div className="text-white/50 mb-3 text-xs uppercase tracking-wider font-semibold">
+                Get in Touch
               </div>
-              <Link
-                href="/training"
-                className="text-[var(--landing-text)] no-underline hover:text-[var(--landing-muted)] transition-opacity"
-              >
-                Training Mode
-              </Link>
-              <Link
-                href="/live"
-                className="text-[var(--landing-text)] no-underline hover:text-[var(--landing-muted)] transition-opacity"
-              >
-                Live Interview
-              </Link>
+              <a href="#" className="text-white/70 hover:text-[#48cae4] transition-colors">
+                For Individuals
+              </a>
+              <a href="#" className="text-white/70 hover:text-[#48cae4] transition-colors">
+                For Companies
+              </a>
+              <a href="#" className="text-white/70 hover:text-[#48cae4] transition-colors">
+                For Government Agencies
+              </a>
             </div>
-            <div className="md:col-span-3 flex flex-col gap-2">
-              <div className="text-[var(--landing-muted)] mb-4 text-[0.7rem] uppercase">
-                Technology
+            <div className="md:col-span-4 flex flex-col gap-2">
+              <div className="text-white/50 mb-3 text-xs uppercase tracking-wider font-semibold">
+                Company
               </div>
-              <span className="text-[var(--landing-text)]">MediaPipe</span>
-              <span className="text-[var(--landing-text)]">Deepgram STT</span>
-              <span className="text-[var(--landing-text)]">ElevenLabs TTS</span>
+              <a href="#" className="text-white/70 hover:text-[#48cae4] transition-colors">
+                About
+              </a>
+              <a href="#" className="text-white/70 hover:text-[#48cae4] transition-colors">
+                Careers
+              </a>
+              <a href="#" className="text-white/70 hover:text-[#48cae4] transition-colors">
+                Legal
+              </a>
             </div>
-          </div>
-          <div className="border-t border-[var(--landing-border)] mt-16 pt-4 flex justify-between text-[var(--landing-muted)] text-[0.7rem]">
-            <span>SIGNSPEAK &mdash; HACK THE GLOBE 2025</span>
-            <span>ACCESSIBILITY FIRST</span>
           </div>
         </div>
       </footer>

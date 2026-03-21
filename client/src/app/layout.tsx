@@ -14,9 +14,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SignSpeak — AI Interview Platform",
+  title: "UniVoice — AI Interview Platform",
   description:
-    "AI-powered interview platform for deaf and hard-of-hearing users",
+    "AI-powered interview platform for deaf and hard-of-hearing candidates with real-time ASL translation",
 };
 
 export default function RootLayout({

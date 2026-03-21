@@ -126,7 +126,7 @@ export default function TrainingPage() {
             href="/"
             className="text-xl font-normal tracking-[-0.04em] text-[var(--landing-text)] hover:opacity-60 transition-opacity"
           >
-            SignSpeak
+            UniVoice
           </Link>
           <div className="h-4 w-px bg-[var(--landing-border)]" />
           <span className="landing-label-inline">Training Mode</span>

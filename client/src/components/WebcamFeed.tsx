@@ -6,6 +6,7 @@ import Webcam from "react-webcam";
 interface WebcamFeedProps {
   onFrame?: (video: HTMLVideoElement) => void;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
+  className?: string;
 }
 
 const videoConstraints = {
@@ -14,7 +15,7 @@ const videoConstraints = {
   facingMode: "user",
 };
 
-export function WebcamFeed({ onFrame, canvasRef }: WebcamFeedProps) {
+export function WebcamFeed({ onFrame, canvasRef, className }: WebcamFeedProps) {
   const webcamRef = useRef<Webcam>(null);
   const animFrameRef = useRef<number>(0);
 
@@ -30,7 +31,7 @@ export function WebcamFeed({ onFrame, canvasRef }: WebcamFeedProps) {
   }, [onFrame]);
 
   return (
-    <div className="relative w-[640px] h-[480px] rounded-lg overflow-hidden bg-black">
+    <div className={`relative overflow-hidden bg-[#202124] ${className || "w-[640px] h-[480px]"}`}>
       <Webcam
         ref={webcamRef}
         videoConstraints={videoConstraints}

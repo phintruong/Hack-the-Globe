@@ -5,52 +5,31 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 230 94% 19%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 230 94% 19%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 230 94% 19%;
+    --primary: 199 100% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 193 77% 95%;
+    --secondary-foreground: 230 94% 19%;
+    --muted: 193 77% 95%;
+    --muted-foreground: 213 50% 45%;
+    --accent: 190 79% 92%;
+    --accent-foreground: 230 94% 19%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 193 77% 88%;
+    --input: 193 77% 88%;
+    --ring: 199 100% 36%;
     --radius: 0.5rem;
 
-    --landing-bg: #f5f5f5;
-    --landing-text: #111111;
-    --landing-muted: #7a7a7a;
-    --landing-border: #e0e0e0;
-  }
-
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    /* Landing page vars */
+    --landing-bg: #ffffff;
+    --landing-text: #03045e;
+    --landing-border: #caf0f8;
+    --landing-muted: #4a7c9b;
   }
 }
 
@@ -63,96 +42,143 @@
   }
 }
 
-/* Landing page styles */
-.landing-label {
-  font-size: 0.7rem;
+/* Navigation */
+.nav-btn {
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--landing-muted);
-  margin-bottom: 0.5rem;
+  padding: 0.5rem 1.2rem;
+  border: 1px solid #ade8f4;
+  border-radius: 4px;
+  background: transparent;
+  color: #03045e;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  border-color: #0077b6;
+  color: #0077b6;
+}
+
+.nav-btn-primary {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 1.2rem;
+  border: 1px solid #0077b6;
+  border-radius: 4px;
+  background: transparent;
+  color: #0077b6;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn-primary:hover {
+  background: #0077b6;
+  color: white;
+}
+
+/* Dropdown */
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: #ffffff;
+  border: 1px solid #caf0f8;
+  border-radius: 4px;
+  padding: 0.25rem 0;
+  z-index: 200;
+  margin-top: 0.25rem;
+  box-shadow: 0 4px 12px rgba(3, 4, 94, 0.08);
+}
+
+.group:hover .dropdown-menu {
   display: block;
 }
 
-.landing-label::after {
-  content: " —";
-}
-
-.btn-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.8rem 1.8rem;
-  border: 1px solid var(--landing-text);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--landing-text);
+.dropdown-item {
+  display: block;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  color: #023e8a;
   text-decoration: none;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  transition: all 0.3s ease;
-  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.btn-pill:hover {
-  background: var(--landing-text);
-  color: var(--landing-bg);
+.dropdown-item:hover {
+  background: #caf0f8;
+  color: #0077b6;
 }
 
+/* Link buttons */
 .link-small {
   font-size: 0.75rem;
   text-transform: uppercase;
-  color: var(--landing-text);
+  letter-spacing: 0.05em;
+  color: #023e8a;
   text-decoration: none;
-  border: 1px solid var(--landing-border);
-  padding: 4px 12px;
-  border-radius: 12px;
+  border: 1px solid #ade8f4;
+  padding: 6px 14px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
-  transition: all 0.3s;
-  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s;
 }
 
 .link-small:hover {
-  border-color: var(--landing-text);
-  background: #fff;
+  border-color: #0077b6;
+  color: #0077b6;
 }
 
-.highlight {
-  color: #b0b0b0;
-  transition: color 0.3s;
+.link-small-accent {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: white;
+  text-decoration: none;
+  border: 1px solid #0077b6;
+  background: #0077b6;
+  padding: 6px 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s;
+  font-weight: 600;
 }
 
-.highlight:hover {
-  color: var(--landing-text);
+.link-small-accent:hover {
+  background: #023e8a;
+  border-color: #023e8a;
 }
 
+/* Pill buttons (training page) */
+.btn-pill {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.6rem 1.5rem;
+  border: 1px solid #0077b6;
+  border-radius: 4px;
+  background: #0077b6;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.btn-pill:hover {
+  background: #023e8a;
+  border-color: #023e8a;
+}
+
+/* Label inline (training page) */
 .landing-label-inline {
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--landing-muted);
-}
-
-.circle-trigger {
-  width: 200px;
-  height: 200px;
-  border: 1px solid var(--landing-text);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: var(--landing-text);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: transform 0.3s, background 0.3s;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(8px);
-}
-
-.circle-trigger:hover {
-  transform: scale(1.05);
-  background: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.08em;
+  color: #4a7c9b;
+  font-weight: 600;
 }
