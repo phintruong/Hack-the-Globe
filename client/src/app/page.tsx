@@ -27,7 +27,7 @@ export default function Home() {
             </div>
           </div>
           <a href="#about" className="nav-btn">Learn More</a>
-          <Link href="/training" className="nav-btn-primary">Login</Link>
+          <Link href="/auth" className="nav-btn-primary">Login</Link>
         </nav>
       </header>
 

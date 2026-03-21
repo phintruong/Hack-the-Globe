@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { WebcamFeed } from "@/components/WebcamFeed";
@@ -16,6 +16,9 @@ import { useDrawLandmarks } from "@/components/HandLandmarkRenderer";
 import { useSocket } from "@/hooks/useSocket";
 import { DemoModeToggle } from "@/components/DemoModeToggle";
 import { INTERVIEW_QUESTIONS } from "@/lib/questions";
+import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 const DEMO_ANSWERS = [
   "At my previous company, we had a critical production outage during peak hours. I was tasked with leading the incident response team. I coordinated between three engineering teams, identified the root cause as a database connection pool exhaustion, and implemented a fix within 2 hours. As a result, we reduced our mean time to recovery by 40% and I created a runbook that prevented similar issues.",
@@ -38,6 +41,9 @@ export default function TrainingPage() {
   const { stable, update } = useLetterStabilizer();
   const drawLandmarks = useDrawLandmarks();
   const { socket, connected } = useSocket();
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const supabase = createClient();
 
   const [currentLetter, setCurrentLetter] = useState<string | null>(null);
   const [currentConfidence, setCurrentConfidence] = useState(0);
@@ -47,8 +53,39 @@ export default function TrainingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
+  const [sessionCount, setSessionCount] = useState<number | null>(null);
 
   const question = INTERVIEW_QUESTIONS[questionIndex];
+
+  // Load session count on mount
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("training_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .then(({ count }) => setSessionCount(count ?? 0));
+  }, [user]);
+
+  const saveSession = useCallback(
+    async (answer: string, fb: STARFeedback) => {
+      if (!user) return;
+      await supabase.from("training_sessions").insert({
+        user_id: user.id,
+        question,
+        question_index: questionIndex,
+        answer,
+        star_situation: fb.situation,
+        star_task: fb.task,
+        star_action: fb.action,
+        star_result: fb.result,
+        improvements: fb.improvements,
+        polished_answer: fb.polishedAnswer,
+      });
+      setSessionCount((c) => (c ?? 0) + 1);
+    },
+    [user, question, questionIndex]
+  );
 
   const handleFrame = useCallback(
     (video: HTMLVideoElement) => {
@@ -101,13 +138,14 @@ export default function TrainingPage() {
           setLoading(false);
           if (data.success && data.feedback) {
             setFeedback(data.feedback);
+            saveSession(answer, data.feedback);
           } else {
             setError(data.error || "Something went wrong");
           }
         }
       );
     },
-    [socket, connected, question]
+    [socket, connected, question, saveSession]
   );
 
   const nextQuestion = useCallback(() => {
@@ -145,6 +183,22 @@ export default function TrainingPage() {
             >
               {connected ? "Connected" : "Disconnected"}
             </Badge>
+            {user && (
+              <>
+                <span className="text-xs text-[var(--landing-muted)] hidden sm:block">
+                  {user.email}
+                  {sessionCount !== null && (
+                    <span className="ml-1 text-[#0077b6]">· {sessionCount} sessions</span>
+                  )}
+                </span>
+                <button
+                  onClick={async () => { await signOut(); router.push("/auth"); }}
+                  className="text-xs uppercase tracking-wider border border-[var(--landing-border)] px-3 py-1.5 rounded-sm hover:border-[#0077b6] hover:text-[#0077b6] transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
