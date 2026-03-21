@@ -1,159 +1,35 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { WebcamFeed } from "@/components/WebcamFeed";
-import { LetterDisplay } from "@/components/LetterDisplay";
-import { WordBuilder } from "@/components/WordBuilder";
-import { TextFallbackInput } from "@/components/TextFallbackInput";
-import { QuestionCard } from "@/components/QuestionCard";
-import { FeedbackPanel } from "@/components/FeedbackPanel";
-import { useMediaPipe } from "@/hooks/useMediaPipe";
-import { useFingerpose } from "@/hooks/useFingerpose";
-import { useLetterStabilizer } from "@/hooks/useLetterStabilizer";
-import { useDrawLandmarks } from "@/components/HandLandmarkRenderer";
-import { useSocket } from "@/hooks/useSocket";
-import { DemoModeToggle } from "@/components/DemoModeToggle";
-import { INTERVIEW_QUESTIONS } from "@/lib/questions";
+import { useTrainingProgress } from "@/hooks/useTrainingProgress";
+import { MODULES } from "@/lib/questions";
 import { useAuth } from "@/context/AuthContext";
-import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
-const DEMO_ANSWERS = [
-  "At my previous company, we had a critical production outage during peak hours. I was tasked with leading the incident response team. I coordinated between three engineering teams, identified the root cause as a database connection pool exhaustion, and implemented a fix within 2 hours. As a result, we reduced our mean time to recovery by 40% and I created a runbook that prevented similar issues.",
-  "In my last role, I worked with a colleague who had a very different communication style. I scheduled regular one-on-one check-ins to better understand their perspective. By actively listening and finding common ground on our project goals, we ended up delivering the project two weeks ahead of schedule.",
-];
-
-interface STARFeedback {
-  situation: number;
-  task: number;
-  action: number;
-  result: number;
-  improvements: string[];
-  polishedAnswer: string;
-}
-
 export default function TrainingPage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { detect, ready } = useMediaPipe();
-  const { estimate } = useFingerpose();
-  const { stable, update } = useLetterStabilizer();
-  const drawLandmarks = useDrawLandmarks();
-  const { socket, connected } = useSocket();
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
-
-  const [currentLetter, setCurrentLetter] = useState<string | null>(null);
-  const [currentConfidence, setCurrentConfidence] = useState(0);
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [feedback, setFeedback] = useState<STARFeedback | null>(null);
-  const [lastAnswer, setLastAnswer] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
-  const [sessionCount, setSessionCount] = useState<number | null>(null);
-
-  const question = INTERVIEW_QUESTIONS[questionIndex];
-
-  // Load session count on mount
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("training_sessions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .then(({ count }) => setSessionCount(count ?? 0));
-  }, [user]);
-
-  const saveSession = useCallback(
-    async (answer: string, fb: STARFeedback) => {
-      if (!user) return;
-      await supabase.from("training_sessions").insert({
-        user_id: user.id,
-        question,
-        question_index: questionIndex,
-        answer,
-        star_situation: fb.situation,
-        star_task: fb.task,
-        star_action: fb.action,
-        star_result: fb.result,
-        improvements: fb.improvements,
-        polished_answer: fb.polishedAnswer,
-      });
-      setSessionCount((c) => (c ?? 0) + 1);
-    },
-    [user, question, questionIndex]
+  const { getModuleProgress, isQuestionComplete } = useTrainingProgress();
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(MODULES.map((m) => m.id))
   );
 
-  const handleFrame = useCallback(
-    (video: HTMLVideoElement) => {
-      const result = detect(video);
-      const ctx = canvasRef.current?.getContext("2d");
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-      if (result && ctx) {
-        drawLandmarks(ctx, result.landmarks, 640, 480);
-        const gesture = estimate(result.landmarks[0]);
-        if (gesture) {
-          setCurrentLetter(gesture.letter);
-          setCurrentConfidence(gesture.confidence);
-          update(gesture.letter, gesture.confidence);
-        } else {
-          setCurrentLetter(null);
-          setCurrentConfidence(0);
-          update(null, 0);
-        }
-      } else if (ctx) {
-        ctx.clearRect(0, 0, 640, 480);
-        setCurrentLetter(null);
-        setCurrentConfidence(0);
-        update(null, 0);
-      }
-    },
-    [detect, estimate, update, drawLandmarks]
+  // Overall progress
+  const totalQuestions = MODULES.reduce((s, m) => s + m.questions.length, 0);
+  const totalCompleted = MODULES.reduce(
+    (s, m) => s + getModuleProgress(m.id).completed,
+    0
   );
-
-  const submitAnswer = useCallback(
-    (answer: string) => {
-      if (!socket || !connected) {
-        setError("Not connected to server");
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      setLastAnswer(answer);
-      setFeedback(null);
-
-      socket.emit("training:submit", { question, answer });
-
-      socket.once(
-        "training:feedback",
-        (data: {
-          success: boolean;
-          feedback?: STARFeedback;
-          error?: string;
-        }) => {
-          setLoading(false);
-          if (data.success && data.feedback) {
-            setFeedback(data.feedback);
-            saveSession(answer, data.feedback);
-          } else {
-            setError(data.error || "Something went wrong");
-          }
-        }
-      );
-    },
-    [socket, connected, question, saveSession]
-  );
-
-  const nextQuestion = useCallback(() => {
-    setQuestionIndex((i) => (i + 1) % INTERVIEW_QUESTIONS.length);
-    setFeedback(null);
-    setLastAnswer("");
-    setError(null);
-  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--landing-bg)] font-[Helvetica_Neue,Helvetica,Arial,sans-serif]">
@@ -169,30 +45,16 @@ export default function TrainingPage() {
           <div className="h-4 w-px bg-[var(--landing-border)]" />
           <span className="landing-label-inline">Training Mode</span>
           <div className="ml-auto flex items-center gap-3">
-            <DemoModeToggle
-              enabled={demoMode}
-              onToggle={() => setDemoMode((d) => !d)}
-            />
-            <Badge
-              variant={connected ? "outline" : "destructive"}
-              className={
-                connected
-                  ? "border-[var(--landing-border)] text-[var(--landing-muted)] bg-transparent text-xs uppercase tracking-wider"
-                  : "text-xs uppercase tracking-wider"
-              }
-            >
-              {connected ? "Connected" : "Disconnected"}
-            </Badge>
             {user && (
               <>
                 <span className="text-xs text-[var(--landing-muted)] hidden sm:block">
                   {user.email}
-                  {sessionCount !== null && (
-                    <span className="ml-1 text-[#0077b6]">· {sessionCount} sessions</span>
-                  )}
                 </span>
                 <button
-                  onClick={async () => { await signOut(); router.push("/auth"); }}
+                  onClick={async () => {
+                    await signOut();
+                    router.push("/auth");
+                  }}
                   className="text-xs uppercase tracking-wider border border-[var(--landing-border)] px-3 py-1.5 rounded-sm hover:border-[#0077b6] hover:text-[#0077b6] transition-colors"
                 >
                   Sign Out
@@ -203,81 +65,138 @@ export default function TrainingPage() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-8 py-8 flex flex-col gap-8">
-        {!ready && (
-          <p className="text-[var(--landing-muted)] text-sm uppercase tracking-wider">
-            Loading hand detection model...
+      <main className="max-w-[900px] mx-auto px-8 py-10">
+        {/* Overall progress */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-medium text-[var(--landing-text)] mb-2">
+            Interview Practice
+          </h1>
+          <p className="text-sm text-[var(--landing-muted)] mb-4">
+            {totalCompleted} / {totalQuestions} questions completed
           </p>
-        )}
-
-        {/* Question */}
-        <div>
-          <QuestionCard
-            question={question}
-            index={questionIndex}
-            total={INTERVIEW_QUESTIONS.length}
-          />
+          <div className="w-full h-2 bg-[var(--landing-border)] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#0077b6] rounded-full transition-all duration-300"
+              style={{
+                width: `${totalQuestions > 0 ? (totalCompleted / totalQuestions) * 100 : 0}%`,
+              }}
+            />
+          </div>
         </div>
 
-        {/* Main content grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left: webcam + detection */}
-          <div className="space-y-4">
-            <div className="border border-[var(--landing-border)] bg-white rounded-sm overflow-hidden">
-              <WebcamFeed onFrame={handleFrame} canvasRef={canvasRef} />
-            </div>
-            <LetterDisplay letter={currentLetter} confidence={currentConfidence} />
-          </div>
+        {/* Module list */}
+        <div className="space-y-3">
+          {MODULES.map((mod) => {
+            const { completed, total } = getModuleProgress(mod.id);
+            const isExpanded = expanded.has(mod.id);
+            const allDone = completed === total;
+            const progressPct = total > 0 ? (completed / total) * 100 : 0;
 
-          {/* Right: answer building + feedback */}
-          <div className="space-y-6">
-            <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
-              <span className="landing-label-inline mb-4 block">Word Builder</span>
-              <WordBuilder
-                stabilizedLetter={stable}
-                onTextReady={submitAnswer}
-              />
-            </div>
-
-            <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
-              <span className="landing-label-inline mb-4 block">Text Input</span>
-              <TextFallbackInput onSubmit={submitAnswer} />
-            </div>
-
-            {demoMode && !loading && !feedback && (
-              <button
-                className="btn-pill w-full"
-                onClick={() => {
-                  const demoAnswer =
-                    DEMO_ANSWERS[questionIndex % DEMO_ANSWERS.length];
-                  submitAnswer(demoAnswer);
-                }}
+            return (
+              <div
+                key={mod.id}
+                className="border border-[var(--landing-border)] rounded-md overflow-hidden bg-white"
               >
-                Demo: Submit Sample Answer
-              </button>
-            )}
+                {/* Module header */}
+                <button
+                  onClick={() => toggle(mod.id)}
+                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-black/[0.02] transition-colors"
+                >
+                  <svg
+                    className={`w-4 h-4 shrink-0 text-[var(--landing-muted)] transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
 
-            {loading && (
-              <div className="text-center py-6 text-[var(--landing-muted)] text-sm uppercase tracking-wider">
-                Evaluating your answer...
-              </div>
-            )}
+                  <span
+                    className={`text-base font-medium ${
+                      allDone
+                        ? "text-[#0077b6]"
+                        : "text-[var(--landing-text)]"
+                    }`}
+                  >
+                    {mod.title}
+                  </span>
 
-            {error && (
-              <div className="text-center py-4 text-red-600 text-sm">
-                {error}
-              </div>
-            )}
+                  <span className="text-sm tabular-nums text-[var(--landing-muted)] ml-1">
+                    {completed} / {total}
+                  </span>
 
-            {feedback && (
-              <>
-                <FeedbackPanel feedback={feedback} originalAnswer={lastAnswer} />
-                <button onClick={nextQuestion} className="btn-pill w-full">
-                  Next Question &#8594;
+                  {/* Progress bar */}
+                  <div className="flex-1 h-1.5 bg-[var(--landing-border)] rounded-full overflow-hidden ml-2">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        allDone ? "bg-[#00b894]" : "bg-[#0077b6]"
+                      }`}
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
                 </button>
-              </>
-            )}
-          </div>
+
+                {/* Question list */}
+                {isExpanded && (
+                  <div className="border-t border-[var(--landing-border)]">
+                    {mod.questions.map((q, idx) => {
+                      const isDone = isQuestionComplete(q.id);
+
+                      return (
+                        <Link
+                          key={q.id}
+                          href={`/training/${mod.id}/${q.id}`}
+                          className="flex items-center gap-3 px-5 py-3 hover:bg-[#0077b6]/5 transition-colors border-b border-[var(--landing-border)] last:border-b-0"
+                        >
+                          {/* Status icon */}
+                          {isDone ? (
+                            <svg
+                              className="w-5 h-5 shrink-0 text-[#00b894]"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                          ) : (
+                            <div className="w-5 h-5 shrink-0 rounded-full border-2 border-[var(--landing-border)]" />
+                          )}
+
+                          {/* Question number */}
+                          <span className="text-xs tabular-nums text-[var(--landing-muted)] w-5 text-right shrink-0">
+                            {idx + 1}.
+                          </span>
+
+                          {/* Question text */}
+                          <span
+                            className={`text-sm ${
+                              isDone
+                                ? "text-[var(--landing-muted)]"
+                                : "text-[var(--landing-text)]"
+                            }`}
+                          >
+                            {q.prompt}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </main>
     </div>
