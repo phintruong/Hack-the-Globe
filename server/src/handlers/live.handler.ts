@@ -6,6 +6,7 @@ import { getOpenAI } from "../services/openai.service.js";
 export function registerLiveHandlers(io: Server, socket: Socket) {
   let deepgramConnection: ReturnType<typeof createLiveTranscription> | null =
     null;
+  let resumeContext = "";
 
   // Speech-to-Text: start listening
   socket.on("live:start-listening", () => {
@@ -16,6 +17,11 @@ export function registerLiveHandlers(io: Server, socket: Socket) {
     deepgramConnection = createLiveTranscription(
       (text, isFinal) => {
         socket.emit("live:transcript", { text, isFinal });
+
+        // Auto-trigger suggestions on final transcript
+        if (isFinal && text.trim().length > 5) {
+          generateSuggestions(text, socket);
+        }
       },
       (error) => {
         socket.emit("live:error", { message: error.message });
@@ -69,27 +75,83 @@ export function registerLiveHandlers(io: Server, socket: Socket) {
     }
   });
 
-  // AI suggestion after transcript
-  socket.on("live:suggest", async (data: { transcript: string }) => {
+  // Select AI option → skip polish, direct to TTS
+  socket.on(
+    "live:select-option",
+    async (data: { label: string; text: string }) => {
+      try {
+        socket.emit("live:selection-ack", { label: data.label });
+        const audioBuffer = await textToSpeech(data.text);
+        socket.emit("live:audio-chunk", {
+          audio: audioBuffer.toString("base64"),
+          mimeType: "audio/mpeg",
+        });
+      } catch (error) {
+        console.error("Select option TTS error:", error);
+        socket.emit("live:error", { message: "Failed to speak selection" });
+      }
+    }
+  );
+
+  // Store resume context for AI suggestions
+  socket.on("live:set-resume", (data: { resume: string }) => {
+    resumeContext = data.resume.slice(0, 4000); // cap to avoid token overflow
+  });
+
+  // Shared suggestion generator
+  async function generateSuggestions(transcript: string, sock: Socket) {
     try {
+      const resumeBlock = resumeContext
+        ? `\nResume: ${resumeContext.slice(0, 2000)}`
+        : "";
+
       const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content:
-              "You are helping a deaf person in a job interview. Given what the interviewer just said, suggest a brief response hint (max 10 words). Return only the suggestion.",
+            content: `Help a deaf job candidate respond. Generate 4 options (A-D) for the interviewer's statement. A=short/direct, B=detailed, C=clarification, D=pivot/context.${resumeBlock}
+Return ONLY JSON: [{"label":"A","text":"..."},{"label":"B","text":"..."},{"label":"C","text":"..."},{"label":"D","text":"..."}]`,
           },
-          { role: "user", content: data.transcript },
+          { role: "user", content: transcript },
         ],
-        temperature: 0.5,
-        max_tokens: 30,
+        temperature: 0.7,
+        max_tokens: 300,
       });
-      const hint = response.choices[0].message.content || "";
-      socket.emit("live:suggestion", { hint });
+
+      const raw = response.choices[0].message.content || "[]";
+      const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+      const options = JSON.parse(cleaned) as { label: string; text: string }[];
+      sock.emit("live:suggestions", { options });
     } catch (error) {
       console.error("AI suggestion error:", error);
+      try {
+        const response = await getOpenAI().chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Help a deaf job candidate. Suggest 1 brief response (max 10 words). Return only the text.",
+            },
+            { role: "user", content: transcript },
+          ],
+          temperature: 0.5,
+          max_tokens: 30,
+        });
+        const hint = response.choices[0].message.content || "";
+        sock.emit("live:suggestions", {
+          options: [{ label: "A", text: hint }],
+        });
+      } catch {
+        // silent fail
+      }
     }
+  }
+
+  // AI response options — manual request
+  socket.on("live:suggest", async (data: { transcript: string }) => {
+    await generateSuggestions(data.transcript, socket);
   });
 
   // Cleanup on disconnect

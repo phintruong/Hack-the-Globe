@@ -50,13 +50,16 @@ export function WordBuilder({
   }, []);
 
   const handleBackspace = useCallback(() => {
-    if (letters.length > 0) {
-      setLetters((prev) => prev.slice(0, -1));
-      setConfidences((prev) => prev.slice(0, -1));
-    } else if (completedWords.length > 0) {
-      setCompletedWords((prev) => prev.slice(0, -1));
-    }
-  }, [letters.length, completedWords.length]);
+    setLetters((prevLetters) => {
+      if (prevLetters.length > 0) {
+        setConfidences((c) => c.slice(0, -1));
+        return prevLetters.slice(0, -1);
+      }
+      // No letters left — remove last completed word
+      setCompletedWords((w) => (w.length > 0 ? w.slice(0, -1) : w));
+      return prevLetters;
+    });
+  }, []);
 
   // Keyboard backspace support
   useEffect(() => {
@@ -149,14 +152,7 @@ export function WordBuilder({
 
       {/* Controls */}
       <div className="flex gap-1.5 flex-wrap">
-        <button
-          onClick={handleBackspace}
-          disabled={letters.length === 0 && completedWords.length === 0}
-          className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-black px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"
-        >
-          Bksp
-        </button>
-        <button
+<button
           onClick={handleSpace}
           disabled={letters.length === 0}
           className="text-xs bg-[#caf0f8] hover:bg-[#ade8f4] text-black px-2.5 py-1.5 rounded transition-colors disabled:opacity-30"

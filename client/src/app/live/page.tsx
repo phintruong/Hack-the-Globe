@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { WebcamFeed } from "@/components/WebcamFeed";
 import { WordBuilder } from "@/components/WordBuilder";
+import { OptionSelector } from "@/components/OptionSelector";
 import { AslGuide } from "@/components/AslGuide";
 import { useMediaPipe } from "@/hooks/useMediaPipe";
 import { useFingerpose } from "@/hooks/useFingerpose";
@@ -10,11 +11,18 @@ import { useLetterStabilizer } from "@/hooks/useLetterStabilizer";
 import { useDrawLandmarks } from "@/components/HandLandmarkRenderer";
 import { useSocket } from "@/hooks/useSocket";
 import { useAudioCapture } from "@/hooks/useAudioCapture";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { extractTextFromPdf } from "@/lib/parse-pdf";
 
 interface ChatMessage {
   sender: "you" | "interviewer" | "system";
   text: string;
   timestamp: Date;
+}
+
+interface AiOption {
+  label: string;
+  text: string;
 }
 
 const QUICK_PHRASES = [
@@ -50,8 +58,56 @@ export default function LivePage() {
   const [interimText, setInterimText] = useState("");
   const [chatInput, setChatInput] = useState("");
   const [clock, setClock] = useState("");
+  const [aiOptions, setAiOptions] = useState<AiOption[]>([]);
+  const [resume, setResume] = useState("");
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeParsing, setResumeParsing] = useState(false);
+  const [showResumeInput, setShowResumeInput] = useState(true);
+  const [showTypeFallback, setShowTypeFallback] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [selectionFeedback, setSelectionFeedback] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const listenersSetup = useRef(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // TTS audio queue
+  const audioQueueRef = useRef<string[]>([]);
+  const audioPlayingRef = useRef(false);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const playNextAudio = useCallback(() => {
+    if (audioQueueRef.current.length === 0) {
+      audioPlayingRef.current = false;
+      return;
+    }
+    audioPlayingRef.current = true;
+    const base64 = audioQueueRef.current.shift()!;
+    const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+    currentAudioRef.current = audio;
+    audio.onended = () => {
+      currentAudioRef.current = null;
+      playNextAudio();
+    };
+    audio.onerror = () => {
+      currentAudioRef.current = null;
+      playNextAudio();
+    };
+    audio.play().catch(() => playNextAudio());
+  }, []);
+
+  const enqueueAudio = useCallback(
+    (base64: string) => {
+      // Cancel current audio if playing — new selection takes priority
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      audioQueueRef.current = [base64]; // replace queue
+      audioPlayingRef.current = false;
+      playNextAudio();
+    },
+    [playNextAudio]
+  );
 
   // Live clock
   useEffect(() => {
@@ -95,6 +151,60 @@ export default function LivePage() {
     [detect, estimate, update, drawLandmarks]
   );
 
+  // Send resume to server when set
+  const handleResumeFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResumeParsing(true);
+    setResumeFileName(file.name);
+    try {
+      const text = await extractTextFromPdf(file);
+      setResume(text);
+    } catch {
+      setResume("");
+      setResumeFileName("");
+    } finally {
+      setResumeParsing(false);
+    }
+  }, []);
+
+  const handleResumeSubmit = useCallback(() => {
+    if (socket && connected && resume.trim()) {
+      socket.emit("live:set-resume", { resume: resume.trim() });
+    }
+    setShowResumeInput(false);
+  }, [socket, connected, resume]);
+
+  // Handle AI option selection — skip polish, direct to TTS
+  const selectOption = useCallback(
+    (option: AiOption) => {
+      const text = option.text.trim();
+      if (!socket || !connected || !text) return;
+      setAiOptions([]);
+      setSelectionFeedback(`Selected option ${option.label}`);
+      setTimeout(() => setSelectionFeedback(null), 2000);
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "you", text, timestamp: new Date() },
+      ]);
+      // Use select-option event (skips polish)
+      socket.emit("live:select-option", { label: option.label, text });
+    },
+    [socket, connected]
+  );
+
+  // Pass stable letter directly to OptionSelector for gesture detection
+  // Only pass to WordBuilder when no AI options are showing
+  const detectedOptionLetter =
+    stable && aiOptions.length > 0 && ["A", "B", "C", "D"].includes(stable.letter)
+      ? stable.letter
+      : null;
+
+  const effectiveStable =
+    stable && aiOptions.length > 0 && ["A", "B", "C", "D"].includes(stable.letter)
+      ? null
+      : stable;
+
   // Speech-to-text
   const setupSTTListeners = useCallback(() => {
     if (!socket || listenersSetup.current) return;
@@ -107,11 +217,31 @@ export default function LivePage() {
           { sender: "interviewer", text: data.text, timestamp: new Date() },
         ]);
         setInterimText("");
+        setSuggestionsLoading(true);
+        // Auto-suggestions are triggered server-side now,
+        // but also request manually as fallback
+        socket.emit("live:suggest", { transcript: data.text });
       } else {
         setInterimText(data.text);
       }
     });
-  }, [socket]);
+
+    socket.on("live:suggestions", (data: { options: AiOption[] }) => {
+      setSuggestionsLoading(false);
+      setAiOptions(data.options);
+      // Clear options after 45 seconds if not selected
+      setTimeout(() => setAiOptions((prev) => (prev === data.options ? [] : prev)), 45000);
+    });
+
+    socket.on("live:selection-ack", (data: { label: string }) => {
+      setSelectionFeedback(`Option ${data.label} confirmed`);
+      setTimeout(() => setSelectionFeedback(null), 1500);
+    });
+
+    socket.on("live:audio-chunk", (data: { audio: string }) => {
+      enqueueAudio(data.audio);
+    });
+  }, [socket, enqueueAudio]);
 
   const onAudioData = useCallback(
     (chunk: Blob) => {
@@ -126,18 +256,67 @@ export default function LivePage() {
 
   const { start, stop } = useAudioCapture(onAudioData);
 
+  // Browser SpeechRecognition fallback
+  const handleFallbackTranscript = useCallback(
+    (text: string, isFinal: boolean) => {
+      if (isFinal) {
+        setChatMessages((prev) => [
+          ...prev,
+          { sender: "interviewer", text, timestamp: new Date() },
+        ]);
+        setInterimText("");
+        setSuggestionsLoading(true);
+        if (socket && connected) {
+          socket.emit("live:suggest", { transcript: text });
+        }
+      } else {
+        setInterimText(text);
+      }
+    },
+    [socket, connected]
+  );
+
+  const {
+    start: startFallbackSTT,
+    stop: stopFallbackSTT,
+    supported: browserSTTSupported,
+  } = useSpeechRecognition({ onTranscript: handleFallbackTranscript });
+
   const toggleListening = useCallback(async () => {
     if (listening) {
       stop();
+      stopFallbackSTT();
       socket?.emit("live:stop-listening");
       setListening(false);
-    } else {
+    } else if (connected && socket) {
       setupSTTListeners();
-      socket?.emit("live:start-listening");
+      socket.emit("live:start-listening");
       await start();
       setListening(true);
+    } else if (browserSTTSupported) {
+      startFallbackSTT();
+      setListening(true);
     }
-  }, [listening, socket, start, stop, setupSTTListeners]);
+  }, [listening, socket, connected, start, stop, setupSTTListeners, startFallbackSTT, stopFallbackSTT, browserSTTSupported]);
+
+  // Auto-start listening when interview begins (resume dismissed)
+  const startListeningOnce = useRef(false);
+  useEffect(() => {
+    if (!showResumeInput && !startListeningOnce.current && !listening) {
+      startListeningOnce.current = true;
+      const id = setTimeout(() => {
+        if (connected && socket) {
+          setupSTTListeners();
+          socket.emit("live:start-listening");
+          start().then(() => setListening(true));
+        } else if (browserSTTSupported) {
+          startFallbackSTT();
+          setListening(true);
+        }
+      }, 500);
+      return () => clearTimeout(id);
+    }
+  }, [showResumeInput, connected, socket, listening, start, setupSTTListeners, startFallbackSTT, browserSTTSupported]);
 
   const handleTextReady = useCallback(
     (text: string) => {
@@ -181,6 +360,82 @@ export default function LivePage() {
       className="h-screen flex flex-col bg-[#f8fbff] text-black overflow-hidden select-none"
       style={{ fontFamily: "'Google Sans', 'Roboto', Arial, sans-serif" }}
     >
+      {/* ── Resume input overlay ── */}
+      {showResumeInput && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-black">Upload your resume</h2>
+            <p className="text-sm text-black/60">
+              Upload a PDF resume. AI will generate personalized response options.
+              Sign <span className="font-mono font-bold">A</span>, <span className="font-mono font-bold">B</span>, <span className="font-mono font-bold">C</span>, or <span className="font-mono font-bold">D</span> to pick a suggestion.
+            </p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={handleResumeFile}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={resumeParsing}
+              className="w-full border-2 border-dashed border-[#ade8f4] hover:border-[#0077b6] rounded-xl p-8 flex flex-col items-center gap-3 transition-colors disabled:opacity-50"
+            >
+              {resumeParsing ? (
+                <>
+                  <svg className="animate-spin w-8 h-8 text-[#0077b6]" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm text-black/50">Parsing PDF...</span>
+                </>
+              ) : resumeFileName ? (
+                <>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="#0077b6">
+                    <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v7h7v9H6z" />
+                  </svg>
+                  <span className="text-sm font-medium text-[#0077b6]">{resumeFileName}</span>
+                  <span className="text-xs text-black/40">Click to change file</span>
+                </>
+              ) : (
+                <>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="#ade8f4">
+                    <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM6 20V4h5v7h7v9H6z" />
+                  </svg>
+                  <span className="text-sm text-black/50">Click to upload PDF resume</span>
+                </>
+              )}
+            </button>
+
+            {resume && (
+              <div className="bg-[#f0f9ff] border border-[#ade8f4] rounded-xl p-3 max-h-32 overflow-y-auto">
+                <span className="text-[10px] text-[#0077b6] uppercase tracking-wider font-medium">Parsed text</span>
+                <p className="text-xs text-black/60 mt-1 whitespace-pre-wrap">{resume.slice(0, 500)}{resume.length > 500 ? "..." : ""}</p>
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowResumeInput(false)}
+                className="text-sm px-4 py-2 rounded-lg hover:bg-[#caf0f8] transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleResumeSubmit}
+                disabled={resumeParsing}
+                className="text-sm px-5 py-2 bg-[#0077b6] hover:bg-[#023e8a] text-white rounded-lg transition-colors disabled:opacity-40"
+              >
+                Start Interview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Top bar ── */}
       <header className="h-14 flex items-center justify-between px-6 shrink-0 border-b border-[#caf0f8]">
         <div className="flex items-center gap-4 min-w-0">
@@ -191,15 +446,22 @@ export default function LivePage() {
         <div className="flex items-center gap-2">
           {!ready && (
             <span className="text-xs bg-[#00b4d8]/15 text-[#0077b6] px-3 py-1 rounded-full">
-              Loading model…
+              Loading model...
             </span>
           )}
+          {/* Gesture detection feedback */}
           {currentLetter && (
             <span className="flex items-center gap-1.5 bg-[#caf0f8] px-3 py-1.5 rounded-full">
               <span className="text-base font-medium font-mono">{currentLetter}</span>
               <span className={`text-xs ${currentConfidence >= 60 ? "text-[#0077b6]" : "text-[#00b4d8]"}`}>
                 {currentConfidence}%
               </span>
+            </span>
+          )}
+          {/* Selection feedback toast */}
+          {selectionFeedback && (
+            <span className="text-xs bg-[#0077b6] text-white px-3 py-1.5 rounded-full animate-pulse">
+              {selectionFeedback}
             </span>
           )}
         </div>
@@ -214,7 +476,7 @@ export default function LivePage() {
 
       {/* ── Main area ── */}
       <div className="flex flex-1 min-h-0 p-2 gap-2">
-        {/* Left: video grid + sign input below user */}
+        {/* Left: video grid + option selector below */}
         <div className="flex-1 flex flex-col min-h-0 gap-2">
           {/* Video tiles */}
           <div className="flex-1 grid grid-cols-3 gap-2 min-h-0">
@@ -287,13 +549,69 @@ export default function LivePage() {
             </div>
           </div>
 
-          {/* Sign input area — below the video tiles */}
+          {/* ── Primary input area: Option Selector OR waiting state ── */}
           <div className="shrink-0 bg-white rounded-xl border border-[#caf0f8] p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-black/50 uppercase tracking-wider font-medium">Sign to Speak</span>
-              <AslGuide />
-            </div>
-            <WordBuilder stabilizedLetter={stable} onTextReady={handleTextReady} />
+            {aiOptions.length > 0 ? (
+              <OptionSelector
+                options={aiOptions}
+                onSelect={selectOption}
+                onDismiss={() => setAiOptions([])}
+                detectedLetter={detectedOptionLetter}
+              />
+            ) : suggestionsLoading ? (
+              <div className="flex items-center justify-center gap-2 py-4">
+                <span className="inline-block w-4 h-4 border-2 border-[#0077b6] border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-black/50">Generating response options...</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-black/50 uppercase tracking-wider font-medium">
+                    {listening ? "Listening to interviewer... options will appear here" : "Start listening to begin"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowTypeFallback(!showTypeFallback)}
+                      className="text-[10px] text-[#0077b6] hover:underline"
+                    >
+                      {showTypeFallback ? "Hide typing" : "Type instead"}
+                    </button>
+                    <AslGuide />
+                  </div>
+                </div>
+
+                {/* Fallback: WordBuilder for manual signing (de-prioritized) */}
+                {showTypeFallback && (
+                  <WordBuilder stabilizedLetter={effectiveStable} onTextReady={handleTextReady} />
+                )}
+
+                {!showTypeFallback && !listening && (
+                  <div className="text-center py-6 space-y-2">
+                    <p className="text-sm text-black/40">
+                      Click the captions button below to start listening
+                    </p>
+                    <p className="text-xs text-black/30">
+                      When the interviewer speaks, AI will generate 4 response options. Sign A, B, C, or D to respond.
+                    </p>
+                  </div>
+                )}
+
+                {!showTypeFallback && listening && (
+                  <div className="text-center py-4 space-y-2">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0077b6] opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0077b6]" />
+                      </span>
+                      <span className="text-sm text-[#0077b6]">Listening...</span>
+                    </div>
+                    {interimText && (
+                      <p className="text-sm text-black/50 italic">&ldquo;{interimText}&rdquo;</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -340,7 +658,7 @@ export default function LivePage() {
                   </svg>
                   <p className="text-sm text-black/50 mb-1">No messages yet</p>
                   <p className="text-xs text-black/30 max-w-[200px]">
-                    Type below, use quick replies, or sign to send messages
+                    When the interviewer speaks, response options will appear. Sign A-D to respond.
                   </p>
                 </div>
               )}
@@ -363,7 +681,28 @@ export default function LivePage() {
                     <span className="text-xs font-medium">Interviewer</span>
                     <span className="text-[10px] text-black/40">typing</span>
                   </div>
-                  <p className="text-sm text-black/50 italic">{interimText}…</p>
+                  <p className="text-sm text-black/50 italic">{interimText}...</p>
+                </div>
+              )}
+              {aiOptions.length > 0 && (
+                <div className="bg-[#caf0f8]/60 border border-[#ade8f4] rounded-lg px-3 py-2.5 space-y-2">
+                  <span className="text-[10px] text-[#0077b6] uppercase tracking-wider font-medium">
+                    Sign A, B, C, or D to respond
+                  </span>
+                  {aiOptions.map((opt) => (
+                    <button
+                      key={opt.label}
+                      onClick={() => selectOption(opt)}
+                      className="w-full text-left flex gap-2 items-start p-2 rounded-lg hover:bg-[#0077b6]/10 transition-colors group"
+                    >
+                      <span className="shrink-0 w-6 h-6 rounded-full bg-[#0077b6] text-white text-xs font-bold flex items-center justify-center group-hover:bg-[#023e8a]">
+                        {opt.label}
+                      </span>
+                      <span className="text-sm text-black/70 group-hover:text-black leading-snug">
+                        {opt.text}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
               <div ref={chatBottomRef} />
@@ -382,7 +721,7 @@ export default function LivePage() {
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Send a message…"
+                  placeholder="Type a response..."
                   className="flex-1 text-sm bg-[#f0f9ff] border border-[#ade8f4] rounded-full px-4 py-2 outline-none focus:border-[#0077b6] transition-colors placeholder:text-black/30"
                 />
                 <button
@@ -445,14 +784,14 @@ export default function LivePage() {
             </svg>
           </button>
 
-          {/* Captions */}
+          {/* Captions / Listening */}
           <button
             onClick={toggleListening}
             disabled={!connected}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
               listening ? "bg-[#0077b6] hover:bg-[#023e8a]" : "bg-[#caf0f8] hover:bg-[#ade8f4]"
             } disabled:opacity-40`}
-            title={listening ? "Captions off" : "Captions on"}
+            title={listening ? "Stop listening" : "Start listening"}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill={listening ? "white" : "#03045e"}>
               <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z" />
