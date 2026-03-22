@@ -2,7 +2,14 @@
 export async function extractTextFromPdf(file: File): Promise<string> {
   // Dynamic import to avoid SSR issues — pdfjs-dist needs DOM APIs
   const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.5.207/pdf.worker.min.mjs`;
+
+  // Use inline worker to avoid CDN/bundling issues
+  if (typeof window !== "undefined") {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
+  }
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;

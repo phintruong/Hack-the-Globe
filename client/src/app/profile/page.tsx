@@ -49,20 +49,7 @@ export default function ProfilePage() {
       .finally(() => setLoadingProfile(false));
   }, [user]);
 
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    try {
-      const text = await extractTextFromPdf(file);
-      setResumeText(text);
-      setStatus("Resume parsed successfully");
-    } catch {
-      setStatus("Failed to parse PDF — try pasting text instead");
-    }
-  }, []);
-
-  const handleSave = useCallback(async () => {
+  const buildGraph = useCallback(async (resume: string, bg: string) => {
     if (!user) return;
     setSaving(true);
     setStatus("Building your knowledge graph...");
@@ -73,8 +60,8 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
-          resumeText,
-          background,
+          resumeText: resume,
+          background: bg,
         }),
       });
       const data = await res.json();
@@ -89,7 +76,26 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  }, [user, resumeText, background]);
+  }, [user]);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    try {
+      const text = await extractTextFromPdf(file);
+      setResumeText(text);
+      setStatus("Resume parsed — building knowledge graph...");
+      // Auto-build graph immediately after parsing
+      await buildGraph(text, background);
+    } catch {
+      setStatus("Failed to parse PDF — try pasting text instead");
+    }
+  }, [background, buildGraph]);
+
+  const handleSave = useCallback(async () => {
+    await buildGraph(resumeText, background);
+  }, [resumeText, background, buildGraph]);
 
   if (authLoading || loadingProfile) {
     return (
