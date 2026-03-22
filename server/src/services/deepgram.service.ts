@@ -8,9 +8,15 @@ function getClient() {
 
 export function createLiveTranscription(
   onTranscript: (text: string, isFinal: boolean) => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  onClose?: () => void,
+  onOpen?: () => void
 ) {
   const deepgram = getClient();
+  let open = false;
+  let keepAliveId: ReturnType<typeof setInterval> | null = null;
+  let keepAliveCount = 0;
+
   const connection = deepgram.listen.live({
     model: "nova-2",
     language: "en",
@@ -23,7 +29,21 @@ export function createLiveTranscription(
   });
 
   connection.on(LiveTranscriptionEvents.Open, () => {
-    console.log("Deepgram connection opened");
+    open = true;
+    console.info("[deepgram] connection opened");
+
+    // Keep-alive every 8s to prevent Deepgram timeout (~10-12s inactivity)
+    keepAliveId = setInterval(() => {
+      if (open) {
+        connection.keepAlive();
+        keepAliveCount++;
+        if (keepAliveCount % 3 === 0) {
+          console.info("[deepgram] keep-alive sent");
+        }
+      }
+    }, 8000);
+
+    onOpen?.();
   });
 
   connection.on(LiveTranscriptionEvents.Transcript, (data) => {
@@ -34,23 +54,45 @@ export function createLiveTranscription(
   });
 
   connection.on(LiveTranscriptionEvents.Error, (err) => {
-    console.error("Deepgram error:", err);
+    console.error("[deepgram] error:", err);
     onError(err instanceof Error ? err : new Error(String(err)));
   });
 
   connection.on(LiveTranscriptionEvents.Close, () => {
-    console.log("Deepgram connection closed");
+    const wasOpen = open;
+    open = false;
+    if (keepAliveId) {
+      clearInterval(keepAliveId);
+      keepAliveId = null;
+    }
+    keepAliveCount = 0;
+
+    if (wasOpen) {
+      console.warn("[deepgram] connection closed unexpectedly");
+    } else {
+      console.info("[deepgram] connection closed");
+    }
+
+    onClose?.();
   });
 
   return {
     send: (audio: Buffer) => {
-      connection.send(audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength));
+      if (open) {
+        connection.send(audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength));
+      }
     },
     keepAlive: () => {
       connection.keepAlive();
     },
     close: () => {
+      open = false;
+      if (keepAliveId) {
+        clearInterval(keepAliveId);
+        keepAliveId = null;
+      }
       connection.requestClose();
     },
+    isOpen: () => open,
   };
 }
