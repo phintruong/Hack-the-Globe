@@ -1,13 +1,17 @@
+import type { QuestionType } from "@/types/index";
+
 export interface Question {
   id: string;
   prompt: string;
   tip?: string;
+  question_type?: QuestionType;
 }
 
 export interface Module {
   id: string;
   title: string;
   description: string;
+  is_premium?: boolean;
   questions: Question[];
 }
 

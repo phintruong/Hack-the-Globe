@@ -2,18 +2,10 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-
-interface STARFeedback {
-  situation: number;
-  task: number;
-  action: number;
-  result: number;
-  improvements: string[];
-  polishedAnswer: string;
-}
+import type { AnswerFeedback, STARFeedback, PuzzleFeedback } from "@/types/index";
 
 interface FeedbackPanelProps {
-  feedback: STARFeedback;
+  feedback: AnswerFeedback;
   originalAnswer: string;
 }
 
@@ -29,32 +21,58 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function FeedbackPanel({
-  feedback,
-  originalAnswer,
-}: FeedbackPanelProps) {
+function STARPanel({ data }: { data: STARFeedback }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>STAR Evaluation</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ScoreBar label="Situation" value={data.situation} />
+        <ScoreBar label="Task" value={data.task} />
+        <ScoreBar label="Action" value={data.action} />
+        <ScoreBar label="Result" value={data.result} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function PuzzlePanel({ data }: { data: PuzzleFeedback }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Puzzle Evaluation</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ScoreBar label="Reasoning Clarity" value={data.reasoning_clarity} />
+        <ScoreBar label="Structure" value={data.structure} />
+        <ScoreBar label="Assumptions" value={data.assumptions} />
+        <ScoreBar label="Communication" value={data.communication} />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function FeedbackPanel({ feedback, originalAnswer }: FeedbackPanelProps) {
+  const improvements = feedback.data.improvements;
+  const polishedAnswer = feedback.data.polishedAnswer;
+
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>STAR Evaluation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <ScoreBar label="Situation" value={feedback.situation} />
-          <ScoreBar label="Task" value={feedback.task} />
-          <ScoreBar label="Action" value={feedback.action} />
-          <ScoreBar label="Result" value={feedback.result} />
-        </CardContent>
-      </Card>
+      {feedback.type === "behavioral" ? (
+        <STARPanel data={feedback.data} />
+      ) : (
+        <PuzzlePanel data={feedback.data} />
+      )}
 
-      {feedback.improvements.length > 0 && (
+      {improvements.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Improvements</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="list-disc list-inside space-y-1 text-sm">
-              {feedback.improvements.map((imp, i) => (
+              {improvements.map((imp, i) => (
                 <li key={i}>{imp}</li>
               ))}
             </ul>
@@ -78,7 +96,7 @@ export function FeedbackPanel({
               Polished version
             </p>
             <p className="text-sm bg-primary/5 border border-primary/20 rounded p-3">
-              {feedback.polishedAnswer}
+              {polishedAnswer}
             </p>
           </div>
         </CardContent>

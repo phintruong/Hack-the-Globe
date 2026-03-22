@@ -16,24 +16,15 @@ import { useLetterStabilizer } from "@/hooks/useLetterStabilizer";
 import { useDrawLandmarks } from "@/components/HandLandmarkRenderer";
 import { useSocket } from "@/hooks/useSocket";
 import { useTrainingProgress } from "@/hooks/useTrainingProgress";
+import { useModules } from "@/hooks/useModules";
 import { DemoModeToggle } from "@/components/DemoModeToggle";
-import { MODULES } from "@/lib/questions";
 import { useAuth } from "@/context/AuthContext";
-import { createClient } from "@/lib/supabase";
+import type { AnswerFeedback } from "@/types/index";
 
 const DEMO_ANSWERS = [
   "At my previous company, we had a critical production outage during peak hours. I was tasked with leading the incident response team. I coordinated between three engineering teams, identified the root cause as a database connection pool exhaustion, and implemented a fix within 2 hours. As a result, we reduced our mean time to recovery by 40% and I created a runbook that prevented similar issues.",
   "In my last role, I worked with a colleague who had a very different communication style. I scheduled regular one-on-one check-ins to better understand their perspective. By actively listening and finding common ground on our project goals, we ended up delivering the project two weeks ahead of schedule.",
 ];
-
-interface STARFeedback {
-  situation: number;
-  task: number;
-  action: number;
-  result: number;
-  improvements: string[];
-  polishedAnswer: string;
-}
 
 export default function PracticePage() {
   const params = useParams<{ moduleId: string; questionId: string }>();
@@ -45,12 +36,13 @@ export default function PracticePage() {
   const drawLandmarks = useDrawLandmarks();
   const { socket, connected } = useSocket();
   const { user, signOut } = useAuth();
-  const supabase = createClient();
-  const { markComplete } = useTrainingProgress();
+
+  const { modules } = useModules("en", user?.id);
+  const { markComplete } = useTrainingProgress(user?.id, modules);
 
   const [currentLetter, setCurrentLetter] = useState<string | null>(null);
   const [currentConfidence, setCurrentConfidence] = useState(0);
-  const [feedback, setFeedback] = useState<STARFeedback | null>(null);
+  const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
   const [lastAnswer, setLastAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,41 +50,37 @@ export default function PracticePage() {
   const [demoIndex, setDemoIndex] = useState(0);
 
   // Resolve module + question from URL params
-  const activeModule = MODULES.find((m) => m.id === params.moduleId);
-  const activeQuestion = activeModule?.questions.find(
-    (q) => q.id === params.questionId
-  );
+  const activeModule = modules.find((m) => m.id === params.moduleId);
+  const activeQuestion = activeModule?.questions.find((q) => q.id === params.questionId);
 
-  // Redirect if invalid params
+  // Redirect if invalid params (only after modules have loaded)
   useEffect(() => {
-    if (!activeModule || !activeQuestion) {
+    if (modules.length > 0 && (!activeModule || !activeQuestion)) {
       router.replace("/training");
     }
-  }, [activeModule, activeQuestion, router]);
+  }, [activeModule, activeQuestion, modules.length, router]);
 
   if (!activeModule || !activeQuestion) {
     return null;
   }
 
   const question = activeQuestion.prompt;
+  const questionType = activeQuestion.question_type ?? "behavioral";
   const questionIndexInModule = activeModule.questions.indexOf(activeQuestion);
 
   // Find next question for navigation
   const getNextQuestionUrl = (): string | null => {
     const curQIdx = questionIndexInModule;
-
-    // Next in same module
     if (curQIdx + 1 < activeModule.questions.length) {
       return `/training/${activeModule.id}/${activeModule.questions[curQIdx + 1].id}`;
     }
-
-    // First question of next module
-    const curModIdx = MODULES.findIndex((m) => m.id === activeModule.id);
-    if (curModIdx + 1 < MODULES.length) {
-      const nextMod = MODULES[curModIdx + 1];
-      return `/training/${nextMod.id}/${nextMod.questions[0].id}`;
+    const curModIdx = modules.findIndex((m) => m.id === activeModule.id);
+    if (curModIdx + 1 < modules.length) {
+      const nextMod = modules[curModIdx + 1];
+      if (!nextMod.locked) {
+        return `/training/${nextMod.id}/${nextMod.questions[0].id}`;
+      }
     }
-
     return null;
   };
 
@@ -120,22 +108,6 @@ export default function PracticePage() {
     }
   };
 
-  const saveSession = async (answer: string, fb: STARFeedback) => {
-    if (!user) return;
-    await supabase.from("training_sessions").insert({
-      user_id: user.id,
-      question,
-      question_index: questionIndexInModule,
-      answer,
-      star_situation: fb.situation,
-      star_task: fb.task,
-      star_action: fb.action,
-      star_result: fb.result,
-      improvements: fb.improvements,
-      polished_answer: fb.polishedAnswer,
-    });
-  };
-
   const submitAnswer = (answer: string) => {
     if (!socket || !connected) {
       setError("Not connected to server");
@@ -147,20 +119,32 @@ export default function PracticePage() {
     setLastAnswer(answer);
     setFeedback(null);
 
-    socket.emit("training:submit", { question, answer, userId: user?.id });
+    socket.emit("training:submit", {
+      question,
+      answer,
+      userId: user?.id,
+      questionType,
+    });
 
     socket.once(
       "training:feedback",
-      (data: {
-        success: boolean;
-        feedback?: STARFeedback;
-        error?: string;
-      }) => {
+      (data: { success: boolean; feedback?: AnswerFeedback; error?: string }) => {
         setLoading(false);
         if (data.success && data.feedback) {
           setFeedback(data.feedback);
-          markComplete(activeQuestion.id, data.feedback);
-          saveSession(answer, data.feedback);
+          // markComplete uses STAR scores; only applicable for behavioral
+          if (data.feedback.type === "behavioral") {
+            markComplete(activeQuestion.id, data.feedback.data);
+          } else {
+            // For puzzle: use average of 4 scores as the "score"
+            const d = data.feedback.data;
+            markComplete(activeQuestion.id, {
+              situation: d.reasoning_clarity,
+              task: d.structure,
+              action: d.assumptions,
+              result: d.communication,
+            });
+          }
         } else {
           setError(data.error || "Something went wrong");
         }
@@ -188,6 +172,11 @@ export default function PracticePage() {
           >
             &#8592; All Modules
           </Link>
+          {questionType === "puzzle" && (
+            <span className="text-xs uppercase tracking-wider text-amber-600 border border-amber-300 rounded px-2 py-0.5">
+              Puzzle
+            </span>
+          )}
           <div className="ml-auto flex items-center gap-3">
             <DemoModeToggle
               enabled={demoMode}
@@ -254,19 +243,12 @@ export default function PracticePage() {
           {/* Right: answer building + feedback */}
           <div className="space-y-6">
             <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
-              <span className="landing-label-inline mb-4 block">
-                Word Builder
-              </span>
-              <WordBuilder
-                stabilizedLetter={stable}
-                onTextReady={submitAnswer}
-              />
+              <span className="landing-label-inline mb-4 block">Word Builder</span>
+              <WordBuilder stabilizedLetter={stable} onTextReady={submitAnswer} />
             </div>
 
             <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
-              <span className="landing-label-inline mb-4 block">
-                Text Input
-              </span>
+              <span className="landing-label-inline mb-4 block">Text Input</span>
               <TextFallbackInput onSubmit={submitAnswer} />
             </div>
 
@@ -274,8 +256,7 @@ export default function PracticePage() {
               <button
                 className="btn-pill w-full"
                 onClick={() => {
-                  const demoAnswer =
-                    DEMO_ANSWERS[demoIndex % DEMO_ANSWERS.length];
+                  const demoAnswer = DEMO_ANSWERS[demoIndex % DEMO_ANSWERS.length];
                   setDemoIndex((i) => i + 1);
                   submitAnswer(demoAnswer);
                 }}
@@ -291,17 +272,12 @@ export default function PracticePage() {
             )}
 
             {error && (
-              <div className="text-center py-4 text-red-600 text-sm">
-                {error}
-              </div>
+              <div className="text-center py-4 text-red-600 text-sm">{error}</div>
             )}
 
             {feedback && (
               <>
-                <FeedbackPanel
-                  feedback={feedback}
-                  originalAnswer={lastAnswer}
-                />
+                <FeedbackPanel feedback={feedback} originalAnswer={lastAnswer} />
                 <div className="flex gap-3">
                   <Link href="/training" className="btn-pill flex-1 text-center">
                     Back to Modules

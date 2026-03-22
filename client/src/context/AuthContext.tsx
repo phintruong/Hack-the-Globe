@@ -3,15 +3,28 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useState,
   useCallback,
 } from "react";
-import type { User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase";
+
+/** Hardcoded demo user — bypasses Supabase auth entirely */
+const DEMO_USER = {
+  id: "00000000-0000-0000-0000-000000000001",
+  email: "demo@univoice.dev",
+  app_metadata: {},
+  user_metadata: {},
+  aud: "authenticated",
+  created_at: new Date().toISOString(),
+} as const;
+
+interface AuthUser {
+  id: string;
+  email?: string;
+  [key: string]: unknown;
+}
 
 interface AuthContextValue {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
@@ -21,47 +34,21 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Always "logged in" as demo user — no Supabase calls
+  const [user] = useState<AuthUser>(DEMO_USER);
+  const loading = false;
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => listener.subscription.unsubscribe();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const signUp = useCallback(async (email: string, password: string): Promise<string | null> => {
+    return null;
   }, []);
 
-  const signUp = useCallback(
-    async (email: string, password: string): Promise<string | null> => {
-      const { error } = await supabase.auth.signUp({ email, password });
-      return error?.message ?? null;
-    },
-    []
-  );
-
-  const signIn = useCallback(
-    async (email: string, password: string): Promise<string | null> => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      return error?.message ?? null;
-    },
-    []
-  );
-
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const signIn = useCallback(async (email: string, password: string): Promise<string | null> => {
+    return null;
   }, []);
+
+  const signOut = useCallback(async () => {}, []);
 
   return (
     <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>

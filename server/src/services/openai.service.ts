@@ -1,4 +1,7 @@
 import OpenAI from "openai";
+import type { QuestionType, STARFeedback, PuzzleFeedback, AnswerFeedback } from "../types/index.js";
+
+export type { STARFeedback, PuzzleFeedback, AnswerFeedback };
 
 let _openai: OpenAI | null = null;
 
@@ -9,15 +12,6 @@ export function getOpenAI(): OpenAI {
     });
   }
   return _openai;
-}
-
-export interface STARFeedback {
-  situation: number;
-  task: number;
-  action: number;
-  result: number;
-  improvements: string[];
-  polishedAnswer: string;
 }
 
 const STAR_PROMPT = `You are an interview coach evaluating answers using the STAR method.
@@ -97,4 +91,89 @@ export async function evaluateAnswer(
     polishedAnswer:
       polishResult.choices[0].message.content || answer,
   };
+}
+
+const PUZZLE_PROMPT = `You are an interview coach evaluating a candidate's answer to a puzzle or estimation question.
+
+Rate each dimension 0-100:
+- reasoning_clarity: Is their thought process logical and easy to follow?
+- structure: Did they break the problem into manageable parts?
+- assumptions: Did they state assumptions clearly and reasonably?
+- communication: Did they explain their thinking in a clear, confident way?
+
+Also provide:
+- 2-3 specific improvements
+- A polished version of their answer that demonstrates strong structured reasoning
+
+If candidate profile context is provided, reference relevant strengths or experience where appropriate.
+
+Respond in this exact JSON format:
+{
+  "reasoning_clarity": <number>,
+  "structure": <number>,
+  "assumptions": <number>,
+  "communication": <number>,
+  "improvements": ["<improvement1>", "<improvement2>"],
+  "polishedAnswer": "<polished version>"
+}`;
+
+export async function evaluatePuzzleAnswer(
+  question: string,
+  answer: string,
+  profileContext?: string | null
+): Promise<PuzzleFeedback> {
+  const profileBlock = profileContext
+    ? `\n\nCandidate Profile:\n${profileContext}`
+    : "";
+
+  const [puzzleResult, polishResult] = await Promise.all([
+    getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: PUZZLE_PROMPT },
+        {
+          role: "user",
+          content: `Question: ${question}\n\nAnswer: ${answer}${profileBlock}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+    getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: POLISH_PROMPT },
+        {
+          role: "user",
+          content: `Question: ${question}\n\nAnswer: ${answer}${profileBlock}`,
+        },
+      ],
+      temperature: 0.5,
+    }),
+  ]);
+
+  const data = JSON.parse(puzzleResult.choices[0].message.content || "{}");
+
+  return {
+    reasoning_clarity: data.reasoning_clarity ?? 0,
+    structure: data.structure ?? 0,
+    assumptions: data.assumptions ?? 0,
+    communication: data.communication ?? 0,
+    improvements: data.improvements ?? [],
+    polishedAnswer: polishResult.choices[0].message.content || answer,
+  };
+}
+
+export async function evaluateByType(
+  question: string,
+  answer: string,
+  questionType: QuestionType,
+  profileContext?: string | null
+): Promise<AnswerFeedback> {
+  if (questionType === "puzzle") {
+    const data = await evaluatePuzzleAnswer(question, answer, profileContext);
+    return { type: "puzzle", data };
+  }
+  const data = await evaluateAnswer(question, answer, profileContext);
+  return { type: "behavioral", data };
 }

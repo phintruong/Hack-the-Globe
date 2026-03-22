@@ -5,12 +5,23 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { extractTextFromPdf } from "@/lib/parse-pdf";
+import dynamic from "next/dynamic";
+
+const KnowledgeGraph3D = dynamic(
+  () => import("@/components/KnowledgeGraph3D"),
+  { ssr: false }
+);
+
+interface BulletPoint {
+  text: string;
+  keywords: string[];
+}
 
 interface KnowledgeGraph {
   skills: string[];
-  experiences: { role: string; company: string; duration: string; highlights: string[] }[];
-  education: { degree: string; institution: string; year: string }[];
-  projects: { name: string; description: string; technologies: string[] }[];
+  experiences: { role: string; company: string; duration: string; highlights: string[]; bullets: BulletPoint[] }[];
+  education: { degree: string; institution: string; year: string; keywords: string[] }[];
+  projects: { name: string; description: string; technologies: string[]; bullets: BulletPoint[] }[];
   strengths: string[];
   industries: string[];
   summary: string;
@@ -195,125 +206,17 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Right: Knowledge Graph Visualization */}
-          <div>
+          {/* Right: 3D Knowledge Graph Visualization */}
+          <div className="lg:h-[600px]">
             <label className="block text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">
               Your Knowledge Graph
             </label>
             {knowledgeGraph ? (
-              <div className="border border-[#caf0f8] rounded-sm p-5 space-y-5">
-                {/* Summary */}
-                {knowledgeGraph.summary && (
-                  <div>
-                    <p className="text-sm text-[#03045e] leading-relaxed">{knowledgeGraph.summary}</p>
-                  </div>
-                )}
-
-                {/* Skills */}
-                {knowledgeGraph.skills.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">Skills</h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {knowledgeGraph.skills.map((s, i) => (
-                        <span key={i} className="bg-[#caf0f8] text-[#023e8a] text-xs px-2.5 py-1 rounded-sm font-medium">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Experience */}
-                {knowledgeGraph.experiences.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">Experience</h3>
-                    <div className="space-y-3">
-                      {knowledgeGraph.experiences.map((exp, i) => (
-                        <div key={i} className="border-l-2 border-[#0077b6] pl-3">
-                          <p className="text-sm font-semibold text-[#03045e]">{exp.role}</p>
-                          <p className="text-xs text-[#023e8a]/60">{exp.company} &middot; {exp.duration}</p>
-                          {exp.highlights.length > 0 && (
-                            <ul className="mt-1 space-y-0.5">
-                              {exp.highlights.map((h, j) => (
-                                <li key={j} className="text-xs text-[#03045e]/70">&bull; {h}</li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Education */}
-                {knowledgeGraph.education.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">Education</h3>
-                    <div className="space-y-2">
-                      {knowledgeGraph.education.map((edu, i) => (
-                        <div key={i}>
-                          <p className="text-sm font-medium text-[#03045e]">{edu.degree}</p>
-                          <p className="text-xs text-[#023e8a]/60">{edu.institution} &middot; {edu.year}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Projects */}
-                {knowledgeGraph.projects.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">Projects</h3>
-                    <div className="space-y-2">
-                      {knowledgeGraph.projects.map((proj, i) => (
-                        <div key={i}>
-                          <p className="text-sm font-medium text-[#03045e]">{proj.name}</p>
-                          <p className="text-xs text-[#03045e]/70">{proj.description}</p>
-                          {proj.technologies.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {proj.technologies.map((t, j) => (
-                                <span key={j} className="bg-[#ade8f4] text-[#023e8a] text-[10px] px-1.5 py-0.5 rounded-sm">
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Strengths */}
-                {knowledgeGraph.strengths.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">Strengths</h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {knowledgeGraph.strengths.map((s, i) => (
-                        <span key={i} className="bg-[#0077b6] text-white text-xs px-2.5 py-1 rounded-sm font-medium">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Industries */}
-                {knowledgeGraph.industries.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#023e8a]/60 mb-2">Industries</h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {knowledgeGraph.industries.map((ind, i) => (
-                        <span key={i} className="border border-[#0077b6] text-[#0077b6] text-xs px-2.5 py-1 rounded-sm">
-                          {ind}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="h-[560px]">
+                <KnowledgeGraph3D kg={knowledgeGraph} />
               </div>
             ) : (
-              <div className="border border-dashed border-[#caf0f8] rounded-sm p-8 flex flex-col items-center justify-center text-center">
+              <div className="border border-dashed border-[#caf0f8] rounded-sm p-8 flex flex-col items-center justify-center text-center h-[560px]">
                 <svg className="w-12 h-12 text-[#ade8f4] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>

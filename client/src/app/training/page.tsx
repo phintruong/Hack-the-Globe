@@ -3,17 +3,25 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTrainingProgress } from "@/hooks/useTrainingProgress";
-import { MODULES } from "@/lib/questions";
+import { useModules } from "@/hooks/useModules";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { PremiumGate } from "@/components/PremiumGate";
+
+const LOCALES = [
+  { code: "en", label: "EN" },
+  { code: "es", label: "ES" },
+  { code: "fr", label: "FR" },
+  { code: "zh", label: "ZH" },
+];
 
 export default function TrainingPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { getModuleProgress, isQuestionComplete } = useTrainingProgress();
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set(MODULES.map((m) => m.id))
-  );
+  const [locale, setLocale] = useState("en");
+  const { modules, loading } = useModules(locale, user?.id);
+  const { getModuleProgress, isQuestionComplete } = useTrainingProgress(user?.id, modules);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -24,9 +32,10 @@ export default function TrainingPage() {
     });
   };
 
-  // Overall progress
-  const totalQuestions = MODULES.reduce((s, m) => s + m.questions.length, 0);
-  const totalCompleted = MODULES.reduce(
+  // Overall progress (only non-locked modules count)
+  const freeModules = modules.filter((m) => !m.locked);
+  const totalQuestions = freeModules.reduce((s, m) => s + m.questions.length, 0);
+  const totalCompleted = freeModules.reduce(
     (s, m) => s + getModuleProgress(m.id).completed,
     0
   );
@@ -45,6 +54,22 @@ export default function TrainingPage() {
           <div className="h-4 w-px bg-[var(--landing-border)]" />
           <span className="landing-label-inline">Training Mode</span>
           <div className="ml-auto flex items-center gap-3">
+            {/* Locale selector */}
+            <div className="flex items-center gap-1 border border-[var(--landing-border)] rounded-sm overflow-hidden">
+              {LOCALES.map((loc) => (
+                <button
+                  key={loc.code}
+                  onClick={() => setLocale(loc.code)}
+                  className={`text-xs px-2 py-1.5 uppercase tracking-wider transition-colors ${
+                    locale === loc.code
+                      ? "bg-[#0077b6] text-white"
+                      : "text-[var(--landing-muted)] hover:text-[#0077b6]"
+                  }`}
+                >
+                  {loc.label}
+                </button>
+              ))}
+            </div>
             <Link
               href="/profile"
               className="text-xs uppercase tracking-wider border border-[var(--landing-border)] px-3 py-1.5 rounded-sm hover:border-[#0077b6] hover:text-[#0077b6] transition-colors"
@@ -90,22 +115,28 @@ export default function TrainingPage() {
           </div>
         </div>
 
+        {loading && (
+          <p className="text-sm text-[var(--landing-muted)] uppercase tracking-wider mb-4">
+            Loading modules...
+          </p>
+        )}
+
         {/* Module list */}
         <div className="space-y-3">
-          {MODULES.map((mod) => {
+          {modules.map((mod) => {
             const { completed, total } = getModuleProgress(mod.id);
             const isExpanded = expanded.has(mod.id);
-            const allDone = completed === total;
+            const allDone = completed === total && total > 0;
             const progressPct = total > 0 ? (completed / total) * 100 : 0;
 
-            return (
+            const moduleContent = (
               <div
                 key={mod.id}
                 className="border border-[var(--landing-border)] rounded-md overflow-hidden bg-white"
               >
                 {/* Module header */}
                 <button
-                  onClick={() => toggle(mod.id)}
+                  onClick={() => !mod.locked && toggle(mod.id)}
                   className="w-full flex items-center gap-4 px-5 py-4 hover:bg-black/[0.02] transition-colors"
                 >
                   <svg
@@ -132,25 +163,34 @@ export default function TrainingPage() {
                     }`}
                   >
                     {mod.title}
+                    {mod.is_premium && (
+                      <span className="ml-2 text-xs uppercase tracking-wider text-amber-600 border border-amber-300 rounded px-1.5 py-0.5">
+                        Premium
+                      </span>
+                    )}
                   </span>
 
-                  <span className="text-sm tabular-nums text-[var(--landing-muted)] ml-1">
-                    {completed} / {total}
-                  </span>
+                  {!mod.locked && (
+                    <span className="text-sm tabular-nums text-[var(--landing-muted)] ml-1">
+                      {completed} / {total}
+                    </span>
+                  )}
 
                   {/* Progress bar */}
-                  <div className="flex-1 h-1.5 bg-[var(--landing-border)] rounded-full overflow-hidden ml-2">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        allDone ? "bg-[#00b894]" : "bg-[#0077b6]"
-                      }`}
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
+                  {!mod.locked && (
+                    <div className="flex-1 h-1.5 bg-[var(--landing-border)] rounded-full overflow-hidden ml-2">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          allDone ? "bg-[#00b894]" : "bg-[#0077b6]"
+                        }`}
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  )}
                 </button>
 
                 {/* Question list */}
-                {isExpanded && (
+                {isExpanded && !mod.locked && (
                   <div className="border-t border-[var(--landing-border)]">
                     {mod.questions.map((q, idx) => {
                       const isDone = isQuestionComplete(q.id);
@@ -161,7 +201,6 @@ export default function TrainingPage() {
                           href={`/training/${mod.id}/${q.id}`}
                           className="flex items-center gap-3 px-5 py-3 hover:bg-[#0077b6]/5 transition-colors border-b border-[var(--landing-border)] last:border-b-0"
                         >
-                          {/* Status icon */}
                           {isDone ? (
                             <svg
                               className="w-5 h-5 shrink-0 text-[#00b894]"
@@ -179,13 +218,9 @@ export default function TrainingPage() {
                           ) : (
                             <div className="w-5 h-5 shrink-0 rounded-full border-2 border-[var(--landing-border)]" />
                           )}
-
-                          {/* Question number */}
                           <span className="text-xs tabular-nums text-[var(--landing-muted)] w-5 text-right shrink-0">
                             {idx + 1}.
                           </span>
-
-                          {/* Question text */}
                           <span
                             className={`text-sm ${
                               isDone
@@ -195,6 +230,11 @@ export default function TrainingPage() {
                           >
                             {q.prompt}
                           </span>
+                          {q.question_type === "puzzle" && (
+                            <span className="ml-auto text-xs text-amber-600 uppercase tracking-wider shrink-0">
+                              Puzzle
+                            </span>
+                          )}
                         </Link>
                       );
                     })}
@@ -202,6 +242,15 @@ export default function TrainingPage() {
                 )}
               </div>
             );
+
+            if (mod.locked) {
+              return (
+                <PremiumGate key={mod.id}>
+                  {moduleContent}
+                </PremiumGate>
+              );
+            }
+            return moduleContent;
           })}
         </div>
       </main>
