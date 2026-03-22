@@ -7,11 +7,27 @@ export function registerLiveHandlers(io: Server, socket: Socket) {
   let deepgramConnection: ReturnType<typeof createLiveTranscription> | null =
     null;
   let resumeContext = "";
+  let alwaysListening = false;
 
-  // Speech-to-Text: start listening
-  socket.on("live:start-listening", () => {
+  let intentionalClose = false;
+
+  function reconnectIfNeeded() {
+    if (alwaysListening && !intentionalClose) {
+      setTimeout(() => {
+        if (alwaysListening) {
+          console.log("Auto-reconnecting Deepgram...");
+          openDeepgram();
+          socket.emit("live:reconnected");
+        }
+      }, 1000);
+    }
+  }
+
+  function openDeepgram() {
     if (deepgramConnection) {
+      intentionalClose = true;
       deepgramConnection.close();
+      intentionalClose = false;
     }
 
     deepgramConnection = createLiveTranscription(
@@ -24,9 +40,21 @@ export function registerLiveHandlers(io: Server, socket: Socket) {
         }
       },
       (error) => {
+        console.error("Deepgram error:", error.message);
         socket.emit("live:error", { message: error.message });
+        reconnectIfNeeded();
+      },
+      () => {
+        // onClose — reconnect if the stream dropped unexpectedly
+        reconnectIfNeeded();
       }
     );
+  }
+
+  // Speech-to-Text: start always-on listening
+  socket.on("live:start-listening", () => {
+    alwaysListening = true;
+    openDeepgram();
   });
 
   // Speech-to-Text: audio chunks from client mic
@@ -38,10 +66,13 @@ export function registerLiveHandlers(io: Server, socket: Socket) {
 
   // Speech-to-Text: stop listening
   socket.on("live:stop-listening", () => {
+    alwaysListening = false;
+    intentionalClose = true;
     if (deepgramConnection) {
       deepgramConnection.close();
       deepgramConnection = null;
     }
+    intentionalClose = false;
   });
 
   // Sign-to-Speech: text → polish → TTS
@@ -156,6 +187,8 @@ Return ONLY JSON: [{"label":"A","text":"..."},{"label":"B","text":"..."},{"label
 
   // Cleanup on disconnect
   socket.on("disconnect", () => {
+    alwaysListening = false;
+    intentionalClose = true;
     if (deepgramConnection) {
       deepgramConnection.close();
       deepgramConnection = null;

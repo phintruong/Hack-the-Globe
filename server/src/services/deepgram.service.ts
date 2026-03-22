@@ -8,7 +8,8 @@ function getClient() {
 
 export function createLiveTranscription(
   onTranscript: (text: string, isFinal: boolean) => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  onClose?: () => void
 ) {
   const deepgram = getClient();
   const connection = deepgram.listen.live({
@@ -40,6 +41,7 @@ export function createLiveTranscription(
 
   connection.on(LiveTranscriptionEvents.Close, () => {
     console.log("Deepgram connection closed");
+    onClose?.();
   });
 
   return {

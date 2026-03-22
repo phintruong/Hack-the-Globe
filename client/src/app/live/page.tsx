@@ -205,7 +205,7 @@ export default function LivePage() {
       ? null
       : stable;
 
-  // Speech-to-text
+  // Speech-to-text — always-on listeners
   const setupSTTListeners = useCallback(() => {
     if (!socket || listenersSetup.current) return;
     listenersSetup.current = true;
@@ -240,6 +240,14 @@ export default function LivePage() {
 
     socket.on("live:audio-chunk", (data: { audio: string }) => {
       enqueueAudio(data.audio);
+    });
+
+    // Auto-reconnect notification
+    socket.on("live:reconnected", () => {
+      setChatMessages((prev) => [
+        ...prev,
+        { sender: "system", text: "Reconnected to live transcription", timestamp: new Date() },
+      ]);
     });
   }, [socket, enqueueAudio]);
 
@@ -299,24 +307,25 @@ export default function LivePage() {
     }
   }, [listening, socket, connected, start, stop, setupSTTListeners, startFallbackSTT, stopFallbackSTT, browserSTTSupported]);
 
-  // Auto-start listening when interview begins (resume dismissed)
+  // Always-on listening: auto-start as soon as socket connects + resume dismissed
   const startListeningOnce = useRef(false);
   useEffect(() => {
-    if (!showResumeInput && !startListeningOnce.current && !listening) {
+    if (!showResumeInput && !startListeningOnce.current && connected && socket) {
       startListeningOnce.current = true;
-      const id = setTimeout(() => {
-        if (connected && socket) {
-          setupSTTListeners();
-          socket.emit("live:start-listening");
-          start().then(() => setListening(true));
-        } else if (browserSTTSupported) {
-          startFallbackSTT();
-          setListening(true);
-        }
-      }, 500);
-      return () => clearTimeout(id);
+      setupSTTListeners();
+      socket.emit("live:start-listening");
+      start().then(() => setListening(true));
     }
-  }, [showResumeInput, connected, socket, listening, start, setupSTTListeners, startFallbackSTT, browserSTTSupported]);
+  }, [showResumeInput, connected, socket, start, setupSTTListeners]);
+
+  // Re-start listening if socket reconnects mid-session
+  useEffect(() => {
+    if (connected && socket && startListeningOnce.current && !listening) {
+      setupSTTListeners();
+      socket.emit("live:start-listening");
+      start().then(() => setListening(true));
+    }
+  }, [connected, socket, listening, start, setupSTTListeners]);
 
   const handleTextReady = useCallback(
     (text: string) => {
@@ -567,7 +576,7 @@ export default function LivePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-black/50 uppercase tracking-wider font-medium">
-                    {listening ? "Listening to interviewer... options will appear here" : "Start listening to begin"}
+                    {listening ? "Live transcription active — options will appear here" : "Connecting..."}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -587,9 +596,10 @@ export default function LivePage() {
 
                 {!showTypeFallback && !listening && (
                   <div className="text-center py-6 space-y-2">
-                    <p className="text-sm text-black/40">
-                      Click the captions button below to start listening
-                    </p>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="inline-block w-4 h-4 border-2 border-[#0077b6] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-black/40">Connecting to live transcription...</span>
+                    </div>
                     <p className="text-xs text-black/30">
                       When the interviewer speaks, AI will generate 4 response options. Sign A, B, C, or D to respond.
                     </p>
@@ -603,7 +613,7 @@ export default function LivePage() {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0077b6] opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-[#0077b6]" />
                       </span>
-                      <span className="text-sm text-[#0077b6]">Listening...</span>
+                      <span className="text-sm text-[#0077b6]">Live transcription active</span>
                     </div>
                     {interimText && (
                       <p className="text-sm text-black/50 italic">&ldquo;{interimText}&rdquo;</p>
@@ -664,15 +674,21 @@ export default function LivePage() {
               )}
               {chatMessages.map((msg, i) => (
                 <div key={i}>
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="text-xs font-medium">
-                      {msg.sender === "you" ? "You" : "Interviewer"}
-                    </span>
-                    <span className="text-[10px] text-black/40">
-                      {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-black/80 leading-relaxed">{msg.text}</p>
+                  {msg.sender === "system" ? (
+                    <p className="text-[11px] text-[#0077b6] text-center italic py-1">{msg.text}</p>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline gap-2 mb-0.5">
+                        <span className="text-xs font-medium">
+                          {msg.sender === "you" ? "You" : "Interviewer"}
+                        </span>
+                        <span className="text-[10px] text-black/40">
+                          {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-black/80 leading-relaxed">{msg.text}</p>
+                    </>
+                  )}
                 </div>
               ))}
               {interimText && (
