@@ -44,7 +44,7 @@ export function createLiveTranscription(
 
   return {
     send: (audio: Buffer) => {
-      connection.send(audio);
+      connection.send(audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength));
     },
     keepAlive: () => {
       connection.keepAlive();
