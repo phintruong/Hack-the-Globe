@@ -13,6 +13,8 @@ import { useSocket } from "@/hooks/useSocket";
 import { useAudioCapture } from "@/hooks/useAudioCapture";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { extractTextFromPdf } from "@/lib/parse-pdf";
+import { PuzzleBuilder } from "@/components/PuzzleBuilder";
+import { useAuth } from "@/context/AuthContext";
 
 interface ChatMessage {
   sender: "you" | "interviewer" | "system";
@@ -66,6 +68,17 @@ export default function LivePage() {
   const [showTypeFallback, setShowTypeFallback] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [selectionFeedback, setSelectionFeedback] = useState<string | null>(null);
+  const [puzzleActive, setPuzzleActive] = useState(false);
+  const [puzzleQuestion, setPuzzleQuestion] = useState("");
+  const [puzzleMode, setPuzzleMode] = useState(true); // true = puzzle, false = quick reply
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null); // new question while puzzle active
+  const puzzleTriggerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accumulatedTranscript = useRef("");
+  const puzzleModeRef = useRef(puzzleMode);
+  const puzzleActiveRef = useRef(puzzleActive);
+  puzzleModeRef.current = puzzleMode;
+  puzzleActiveRef.current = puzzleActive;
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const listenersSetup = useRef(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -217,10 +230,27 @@ export default function LivePage() {
           { sender: "interviewer", text: data.text, timestamp: new Date() },
         ]);
         setInterimText("");
-        setSuggestionsLoading(true);
-        // Auto-suggestions are triggered server-side now,
-        // but also request manually as fallback
-        socket.emit("live:suggest", { transcript: data.text });
+
+        if (puzzleModeRef.current) {
+          // Stable final segment trigger: 1.5s silence before triggering puzzle
+          accumulatedTranscript.current = data.text;
+          if (puzzleTriggerTimer.current) clearTimeout(puzzleTriggerTimer.current);
+          puzzleTriggerTimer.current = setTimeout(() => {
+            const question = accumulatedTranscript.current;
+            accumulatedTranscript.current = "";
+            if (puzzleActiveRef.current) {
+              // Already building — show "new question detected" banner
+              setPendingQuestion(question);
+            } else {
+              setPuzzleQuestion(question);
+              setPuzzleActive(true);
+            }
+          }, 1500);
+        } else {
+          // Quick reply mode: use old suggestion flow
+          setSuggestionsLoading(true);
+          socket.emit("live:suggest", { transcript: data.text });
+        }
       } else {
         setInterimText(data.text);
       }
@@ -440,7 +470,7 @@ export default function LivePage() {
       <header className="h-14 flex items-center justify-between px-6 shrink-0 border-b border-[#caf0f8]">
         <div className="flex items-center gap-4 min-w-0">
           <span className="text-lg font-medium text-black tracking-tight truncate">
-            UniVoice Interview
+            VIBE Interview
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -549,38 +579,98 @@ export default function LivePage() {
             </div>
           </div>
 
-          {/* ── Primary input area: Option Selector OR waiting state ── */}
+          {/* ── Primary input area ── */}
           <div className="shrink-0 bg-white rounded-xl border border-[#caf0f8] p-3">
-            {aiOptions.length > 0 ? (
+            {/* Mode toggle */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1 border border-[#caf0f8] rounded-full overflow-hidden">
+                <button
+                  onClick={() => { setPuzzleMode(true); setAiOptions([]); }}
+                  className={`text-[10px] px-3 py-1 transition-colors ${
+                    puzzleMode ? "bg-[#0077b6] text-white" : "text-black/40 hover:text-[#0077b6]"
+                  }`}
+                >
+                  Puzzle
+                </button>
+                <button
+                  onClick={() => { setPuzzleMode(false); setPuzzleActive(false); }}
+                  className={`text-[10px] px-3 py-1 transition-colors ${
+                    !puzzleMode ? "bg-[#0077b6] text-white" : "text-black/40 hover:text-[#0077b6]"
+                  }`}
+                >
+                  Quick Reply
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowTypeFallback(!showTypeFallback)}
+                  className="text-[10px] text-[#0077b6] hover:underline"
+                >
+                  {showTypeFallback ? "Hide typing" : "Type instead"}
+                </button>
+                <AslGuide />
+              </div>
+            </div>
+
+            {/* New question banner */}
+            {pendingQuestion && puzzleActive && (
+              <div className="bg-[#caf0f8] rounded-lg px-3 py-2 mb-2 flex items-center justify-between">
+                <span className="text-xs text-[#0077b6]">New question detected</span>
+                <button
+                  onClick={() => {
+                    setPuzzleQuestion(pendingQuestion);
+                    setPendingQuestion(null);
+                    setPuzzleActive(true);
+                  }}
+                  className="text-[10px] bg-[#0077b6] text-white px-2 py-0.5 rounded"
+                >
+                  Switch
+                </button>
+              </div>
+            )}
+
+            {/* Puzzle mode: PuzzleBuilder */}
+            {puzzleMode && puzzleActive ? (
+              <PuzzleBuilder
+                mode="live"
+                question={puzzleQuestion}
+                questionType="behavioral"
+                userId={user?.id || ""}
+                socket={socket}
+                connected={connected}
+                detectedLetter={detectedOptionLetter}
+                onAnswerReady={(text) => {
+                  setChatMessages((prev) => [
+                    ...prev,
+                    { sender: "you", text, timestamp: new Date() },
+                  ]);
+                  if (socket && connected) {
+                    socket.emit("live:sign-text", { text });
+                  }
+                  setPuzzleActive(false);
+                  setPendingQuestion(null);
+                }}
+                onCancel={() => {
+                  setPuzzleActive(false);
+                  setPendingQuestion(null);
+                }}
+              />
+            ) : !puzzleMode && aiOptions.length > 0 ? (
+              /* Quick reply mode: existing OptionSelector */
               <OptionSelector
                 options={aiOptions}
                 onSelect={selectOption}
                 onDismiss={() => setAiOptions([])}
                 detectedLetter={detectedOptionLetter}
               />
-            ) : suggestionsLoading ? (
+            ) : !puzzleMode && suggestionsLoading ? (
               <div className="flex items-center justify-center gap-2 py-4">
                 <span className="inline-block w-4 h-4 border-2 border-[#0077b6] border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm text-black/50">Generating response options...</span>
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-black/50 uppercase tracking-wider font-medium">
-                    {listening ? "Listening to interviewer... options will appear here" : "Start listening to begin"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowTypeFallback(!showTypeFallback)}
-                      className="text-[10px] text-[#0077b6] hover:underline"
-                    >
-                      {showTypeFallback ? "Hide typing" : "Type instead"}
-                    </button>
-                    <AslGuide />
-                  </div>
-                </div>
-
-                {/* Fallback: WordBuilder for manual signing (de-prioritized) */}
+                {/* Fallback: WordBuilder for manual signing */}
                 {showTypeFallback && (
                   <WordBuilder stabilizedLetter={effectiveStable} onTextReady={handleTextReady} />
                 )}
@@ -591,7 +681,9 @@ export default function LivePage() {
                       Click the captions button below to start listening
                     </p>
                     <p className="text-xs text-black/30">
-                      When the interviewer speaks, AI will generate 4 response options. Sign A, B, C, or D to respond.
+                      {puzzleMode
+                        ? "When the interviewer speaks, puzzle blocks will appear to build your answer."
+                        : "When the interviewer speaks, AI will generate 4 response options. Sign A, B, C, or D to respond."}
                     </p>
                   </div>
                 )}

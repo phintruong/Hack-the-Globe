@@ -1,4 +1,4 @@
--- UniVoice Feature Expansion Migration
+-- VIBE Feature Expansion Migration
 -- Run this in the Supabase SQL editor
 
 -- profiles: user resume + knowledge graph

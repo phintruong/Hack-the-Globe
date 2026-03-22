@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "UniVoice — AI Interview Platform",
+  title: "VIBE — AI Interview Platform",
   description:
     "AI-powered interview platform for deaf and hard-of-hearing candidates with real-time ASL translation",
 };

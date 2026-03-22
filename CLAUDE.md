@@ -1,6 +1,6 @@
-# UniVoice — AI Interview Platform
+# VIBE — AI Interview Platform
 
-Hackathon project: AI interview platform for deaf/hard-of-hearing users. Training mode (STAR feedback) + Live mode (sign-to-speech, speech-to-text). See `PLAN.md` for full technical spec. See `PHASES.md` for dev checklist. Brand name: **UniVoice**.
+Hackathon project: AI interview platform for deaf/hard-of-hearing users. Training mode (STAR feedback) + Live mode (sign-to-speech, speech-to-text). See `PLAN.md` for full technical spec. See `PHASES.md` for dev checklist. Brand name: **VIBE** (Voice Inclusion for Better Employment).
 
 ## Stack
 

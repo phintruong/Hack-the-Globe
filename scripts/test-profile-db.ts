@@ -285,7 +285,7 @@ async function cleanup(userAClient: SupabaseClient, userAId: string, userBClient
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function run() {
-  console.log("══ UniVoice Integration Tests ══\n");
+  console.log("══ VIBE Integration Tests ══\n");
 
   await testTablesExist();
   await testModulesPublicRead();

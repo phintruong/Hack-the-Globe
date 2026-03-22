@@ -8,7 +8,7 @@ export default function Home() {
       {/* Header */}
       <header className="fixed top-0 left-0 w-full px-8 py-5 z-[100] flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-[#caf0f8]">
         <div className="text-xl font-semibold tracking-tight text-[#0077b6]">
-          UniVoice
+          VIBE
         </div>
         <nav className="flex items-center gap-3 max-md:hidden">
           <div className="relative group">
@@ -41,9 +41,11 @@ export default function Home() {
           <h1 className="text-[clamp(2.5rem,6vw,5rem)] leading-[1.05] mb-6 font-bold tracking-tight text-black">
             Prepare with{" "}
             <br className="max-md:hidden" />
-            UniVoice{" "}
+            VIBE{" "}
             <br />
-            Interview freely
+            <span className="text-[clamp(1rem,2.5vw,2rem)] font-medium text-black/60">
+              Voice Inclusion for Better Employment
+            </span>
           </h1>
           <p className="text-lg max-w-[600px] text-black/60 mb-10 leading-relaxed">
             AI-powered interview platform for deaf and hard-of-hearing
@@ -105,13 +107,12 @@ export default function Home() {
             <div className="flex-1">
               <blockquote className="text-lg italic text-[#0077b6] leading-relaxed mb-4">
                 &ldquo;It&rsquo;s really hard to find interview prep that works for
-                someone like me. UniVoice made it feel natural, I could actually
+                someone like me. VIBE made it feel natural, I could actually
                 practice in a way that fits how I communicate, and that gave me
                 so much more confidence.&rdquo;
               </blockquote>
               <p className="text-sm text-black/50">&mdash; Sarah, IT Helpdesk</p>
               <div className="flex gap-3 mt-4">
-                <a href="#" className="link-small">Read White Paper</a>
                 <a href="#" className="link-small-accent">Read the Story</a>
               </div>
             </div>
@@ -131,12 +132,11 @@ export default function Home() {
             <div className="flex-1">
               <blockquote className="text-lg italic text-[#0077b6] leading-relaxed mb-4">
                 &ldquo;The live interpretation was seamless, and we could focus on
-                the candidate, not the barriers. UniVoice streamlined our hiring
+                the candidate, not the barriers. VIBE streamlined our hiring
                 process and making it more inclusive.&rdquo;
               </blockquote>
               <p className="text-sm text-black/50">&mdash; Bobby, Hiring Manager</p>
               <div className="flex gap-3 mt-4">
-                <a href="#" className="link-small">Read White Paper</a>
                 <a href="#" className="link-small-accent">Read the Story</a>
               </div>
             </div>
@@ -162,14 +162,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Will UniVoice work for you? */}
+      {/* Will VIBE work for you? */}
       <section id="about" className="py-24 border-t border-[#caf0f8] relative z-[5] bg-white">
         <div className="max-w-[1200px] mx-auto px-8 text-center">
-          <h2 className="text-3xl font-bold mb-6 text-black">Will UniVoice work for you?</h2>
+          <h2 className="text-3xl font-bold mb-6 text-black">Will VIBE work for you?</h2>
           <p className="inline-block bg-[#caf0f8] text-black text-sm leading-relaxed px-6 py-4 rounded-sm max-w-[700px]">
             Short answer: yes. Whether you&rsquo;re a deaf or hard-of-hearing
             candidate preparing for an upcoming interview, or an organization
-            looking to make hiring more accessible, UniVoice gives you the
+            looking to make hiring more accessible, VIBE gives you the
             tools, practice, and real-time support to make every interview
             seamless.
           </p>
@@ -182,7 +182,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
             <div className="md:col-span-4 flex flex-col gap-2">
               <h3 className="text-xl font-semibold text-[#48cae4] mb-1">
-                UniVoice
+                VIBE
               </h3>
               <p className="text-white/50">
                 Empowering Every Voice in Hiring

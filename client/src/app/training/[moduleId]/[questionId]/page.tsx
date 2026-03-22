@@ -18,6 +18,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { useTrainingProgress } from "@/hooks/useTrainingProgress";
 import { useModules } from "@/hooks/useModules";
 import { DemoModeToggle } from "@/components/DemoModeToggle";
+import { PuzzleBuilder } from "@/components/PuzzleBuilder";
 import { useAuth } from "@/context/AuthContext";
 import type { AnswerFeedback } from "@/types/index";
 
@@ -48,6 +49,7 @@ export default function PracticePage() {
   const [error, setError] = useState<string | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [demoIndex, setDemoIndex] = useState(0);
+  const [inputMode, setInputMode] = useState<"puzzle" | "classic">("puzzle");
 
   // Resolve module + question from URL params
   const activeModule = modules.find((m) => m.id === params.moduleId);
@@ -163,7 +165,7 @@ export default function PracticePage() {
             href="/"
             className="text-xl font-normal tracking-[-0.04em] text-[var(--landing-text)] hover:opacity-60 transition-opacity"
           >
-            UniVoice
+            VIBE
           </Link>
           <div className="h-4 w-px bg-[var(--landing-border)]" />
           <Link
@@ -242,15 +244,60 @@ export default function PracticePage() {
 
           {/* Right: answer building + feedback */}
           <div className="space-y-6">
-            <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
-              <span className="landing-label-inline mb-4 block">Word Builder</span>
-              <WordBuilder stabilizedLetter={stable} onTextReady={submitAnswer} />
-            </div>
+            {/* Mode toggle */}
+            {!feedback && (
+              <div className="flex items-center border border-[var(--landing-border)] rounded-sm overflow-hidden w-fit">
+                <button
+                  onClick={() => setInputMode("puzzle")}
+                  className={`text-xs px-4 py-2 uppercase tracking-wider transition-colors ${
+                    inputMode === "puzzle"
+                      ? "bg-[#0077b6] text-white"
+                      : "text-[var(--landing-muted)] hover:text-[#0077b6]"
+                  }`}
+                >
+                  Puzzle
+                </button>
+                <button
+                  onClick={() => setInputMode("classic")}
+                  className={`text-xs px-4 py-2 uppercase tracking-wider transition-colors ${
+                    inputMode === "classic"
+                      ? "bg-[#0077b6] text-white"
+                      : "text-[var(--landing-muted)] hover:text-[#0077b6]"
+                  }`}
+                >
+                  Type / Sign
+                </button>
+              </div>
+            )}
 
-            <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
-              <span className="landing-label-inline mb-4 block">Text Input</span>
-              <TextFallbackInput onSubmit={submitAnswer} />
-            </div>
+            {inputMode === "puzzle" && !feedback && !loading && (
+              <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
+                <PuzzleBuilder
+                  mode="training"
+                  question={question}
+                  questionType={questionType}
+                  userId={user?.id || ""}
+                  socket={socket}
+                  connected={connected}
+                  detectedLetter={stable?.letter ?? null}
+                  onAnswerReady={submitAnswer}
+                />
+              </div>
+            )}
+
+            {inputMode === "classic" && !feedback && !loading && (
+              <>
+                <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
+                  <span className="landing-label-inline mb-4 block">Word Builder</span>
+                  <WordBuilder stabilizedLetter={stable} onTextReady={submitAnswer} />
+                </div>
+
+                <div className="border border-[var(--landing-border)] bg-white rounded-sm p-6">
+                  <span className="landing-label-inline mb-4 block">Text Input</span>
+                  <TextFallbackInput onSubmit={submitAnswer} />
+                </div>
+              </>
+            )}
 
             {demoMode && !loading && !feedback && (
               <button

@@ -1,4 +1,4 @@
-// Shared types for UniVoice server
+// Shared types for VIBE server
 
 export type QuestionType =
   | "behavioral"
@@ -47,6 +47,36 @@ export interface DbQuestion {
   question_type: QuestionType;
   sort_order: number;
 }
+
+// ── Puzzle Builder types ──
+
+export type BlockCategory = "skill" | "action" | "metric" | "context" | "experience";
+
+export interface PuzzleBlock {
+  id: string;
+  text: string;
+  category: BlockCategory;
+}
+
+export interface ExperienceOption {
+  label: "A" | "B" | "C" | "D";
+  title: string;
+  description: string;
+}
+
+export interface StitchSegment {
+  type: "block" | "filler";
+  text: string;
+  blockId?: string;
+}
+
+export interface PuzzleError {
+  event: "generate-options" | "generate-blocks" | "stitch";
+  message: string;
+  fallbackUsed: boolean;
+}
+
+// ── Transcript types ──
 
 export interface TranscriptSegment {
   id: string;

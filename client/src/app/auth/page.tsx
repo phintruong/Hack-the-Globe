@@ -51,7 +51,7 @@ export default function AuthPage() {
           href="/"
           className="text-xl font-semibold tracking-tight text-[#0077b6]"
         >
-          UniVoice
+          VIBE
         </Link>
       </header>
 

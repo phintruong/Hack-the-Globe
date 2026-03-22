@@ -121,7 +121,7 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="px-8 py-5 border-b border-[#caf0f8] flex justify-between items-center">
         <Link href="/" className="text-xl font-semibold tracking-tight text-[#0077b6]">
-          UniVoice
+          VIBE
         </Link>
         <nav className="flex items-center gap-3">
           <Link href="/training" className="nav-btn">Training</Link>

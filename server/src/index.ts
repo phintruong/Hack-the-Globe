@@ -9,6 +9,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import { registerTrainingHandlers } from "./handlers/training.handler.js";
 import { registerLiveHandlers } from "./handlers/live.handler.js";
+import { registerPuzzleHandlers } from "./handlers/puzzle.handler.js";
 import profileRouter from "./handlers/profile.handler.js";
 import moduleRouter from "./handlers/module.handler.js";
 
@@ -35,6 +36,7 @@ io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
   registerTrainingHandlers(io, socket);
   registerLiveHandlers(io, socket);
+  registerPuzzleHandlers(io, socket);
 
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);

@@ -1,4 +1,4 @@
-# UniVoice — Architecture & Feature Overview
+# VIBE — Architecture & Feature Overview
 
 AI-powered interview platform for deaf/hard-of-hearing users. Training mode (STAR feedback) + Live mode (sign-to-speech, speech-to-text).
 

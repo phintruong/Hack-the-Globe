@@ -1,4 +1,4 @@
-// Shared types for UniVoice client (mirrors server/src/types/index.ts)
+// Shared types for VIBE client (mirrors server/src/types/index.ts)
 
 export type QuestionType =
   | "behavioral"
@@ -29,6 +29,36 @@ export interface PuzzleFeedback {
 export type AnswerFeedback =
   | { type: "behavioral"; data: STARFeedback }
   | { type: "puzzle"; data: PuzzleFeedback };
+
+// ── Puzzle Builder types ──
+
+export type BlockCategory = "skill" | "action" | "metric" | "context" | "experience";
+
+export interface PuzzleBlock {
+  id: string;
+  text: string;
+  category: BlockCategory;
+}
+
+export interface ExperienceOption {
+  label: "A" | "B" | "C" | "D";
+  title: string;
+  description: string;
+}
+
+export interface StitchSegment {
+  type: "block" | "filler";
+  text: string;
+  blockId?: string;
+}
+
+export interface PuzzleError {
+  event: "generate-options" | "generate-blocks" | "stitch";
+  message: string;
+  fallbackUsed: boolean;
+}
+
+// ── Transcript types ──
 
 export interface TranscriptSegment {
   id: string;

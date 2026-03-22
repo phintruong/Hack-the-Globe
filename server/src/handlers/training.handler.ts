@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { evaluateByType } from "../services/openai.service.js";
-import { getProfile } from "./profile.handler.js";
+import { getProfile } from "../services/profile.service.js";
 import { getRelevantKGContext } from "../services/kg-retrieval.service.js";
 import type { QuestionType } from "../types/index.js";
 import type { KnowledgeGraph } from "../services/knowledge-graph.service.js";
