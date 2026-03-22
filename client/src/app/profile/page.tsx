@@ -16,7 +16,7 @@ interface KnowledgeGraph {
   summary: string;
 }
 
-const API = "http://localhost:3001";
+const API = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3001";
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();

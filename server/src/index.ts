@@ -12,12 +12,15 @@ import { registerLiveHandlers } from "./handlers/live.handler.js";
 import profileRouter from "./handlers/profile.handler.js";
 
 const app = express();
-app.use(cors({ origin: "http://localhost:3000" }));
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["http://localhost:3000"];
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: "http://localhost:3000" },
+  cors: { origin: allowedOrigins },
 });
 
 app.get("/health", (_req, res) => {
