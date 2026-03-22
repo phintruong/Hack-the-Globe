@@ -161,6 +161,50 @@ GRANT ALL ON interview_sessions TO authenticated;
 GRANT ALL ON transcript_segments TO authenticated;
 GRANT ALL ON user_entitlements TO authenticated;
 
+-- user_question_answers: stores full answer text + feedback per submission
+CREATE TABLE IF NOT EXISTS user_question_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  question_id TEXT NOT NULL,
+  module_id TEXT NOT NULL,
+  answer_text TEXT NOT NULL,
+  question_prompt TEXT NOT NULL,
+  question_type TEXT NOT NULL DEFAULT 'behavioral'
+    CHECK (question_type IN ('behavioral','technical','puzzle','resume_based','follow_up','intro')),
+  feedback_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  score INT NOT NULL DEFAULT 0,
+  submission_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(submission_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_question_answers_user_module
+  ON user_question_answers(user_id, module_id);
+
+ALTER TABLE user_question_answers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_question_answers_own" ON user_question_answers
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+GRANT ALL ON user_question_answers TO authenticated;
+
+-- module_reports: cached AI-generated reports per user per module
+CREATE TABLE IF NOT EXISTS module_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  module_id TEXT NOT NULL,
+  report_json JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, module_id)
+);
+
+ALTER TABLE module_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "module_reports_own" ON module_reports
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+GRANT ALL ON module_reports TO authenticated;
+
 -- =====================
 -- SEED DATA
 -- =====================

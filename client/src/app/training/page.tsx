@@ -176,6 +176,16 @@ export default function TrainingPage() {
                     </span>
                   )}
 
+                  {allDone && (
+                    <Link
+                      href={`/training/${mod.id}/report`}
+                      className="text-xs uppercase tracking-wider text-[#0077b6] border border-[#0077b6] px-3 py-1 rounded-sm hover:bg-[#0077b6] hover:text-white transition-colors ml-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View Report
+                    </Link>
+                  )}
+
                   {/* Progress bar */}
                   {!mod.locked && (
                     <div className="flex-1 h-1.5 bg-[var(--landing-border)] rounded-full overflow-hidden ml-2">

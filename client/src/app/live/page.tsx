@@ -15,6 +15,14 @@ import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { extractTextFromPdf } from "@/lib/parse-pdf";
 import { PuzzleBuilder } from "@/components/PuzzleBuilder";
 import { useAuth } from "@/context/AuthContext";
+import { ClosedCaptions } from "@/components/ClosedCaptions";
+
+type TranscriptionState =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "failed";
 
 interface ChatMessage {
   sender: "you" | "interviewer" | "system";
@@ -79,6 +87,12 @@ export default function LivePage() {
   puzzleModeRef.current = puzzleMode;
   puzzleActiveRef.current = puzzleActive;
   const { user } = useAuth();
+  const [sttState, setSttState] = useState<TranscriptionState>("idle");
+  const [recentFinals, setRecentFinals] = useState<{ text: string; timestamp: number }[]>([]);
+  const [lastTranscriptTime, setLastTranscriptTime] = useState(Date.now());
+  const [silenceDuration, setSilenceDuration] = useState(0);
+  const [captionsVisible, setCaptionsVisible] = useState(true);
+  const prevConnectedRef = useRef(connected);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const listenersSetup = useRef(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -135,6 +149,22 @@ export default function LivePage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, interimText]);
+
+  // Silence duration tracker
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSilenceDuration(Date.now() - lastTranscriptTime);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lastTranscriptTime]);
+
+  // Prune old finals (older than 10s)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRecentFinals((prev) => prev.filter((f) => Date.now() - f.timestamp < 10000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Hand detection loop
   const handleFrame = useCallback(
@@ -224,11 +254,13 @@ export default function LivePage() {
     listenersSetup.current = true;
 
     socket.on("live:transcript", (data: { text: string; isFinal: boolean }) => {
+      setLastTranscriptTime(Date.now());
       if (data.isFinal) {
         setChatMessages((prev) => [
           ...prev,
           { sender: "interviewer", text: data.text, timestamp: new Date() },
         ]);
+        setRecentFinals((prev) => [...prev, { text: data.text, timestamp: Date.now() }]);
         setInterimText("");
 
         if (puzzleModeRef.current) {
@@ -254,6 +286,10 @@ export default function LivePage() {
       } else {
         setInterimText(data.text);
       }
+    });
+
+    socket.on("live:stt-state", (data: { state: TranscriptionState }) => {
+      setSttState(data.state);
     });
 
     socket.on("live:suggestions", (data: { options: AiOption[] }) => {
@@ -284,7 +320,7 @@ export default function LivePage() {
     [socket, connected]
   );
 
-  const { start, stop } = useAudioCapture(onAudioData);
+  const { start, stop, restart } = useAudioCapture(onAudioData);
 
   // Browser SpeechRecognition fallback
   const handleFallbackTranscript = useCallback(
@@ -312,13 +348,22 @@ export default function LivePage() {
     supported: browserSTTSupported,
   } = useSpeechRecognition({ onTranscript: handleFallbackTranscript });
 
-  const toggleListening = useCallback(async () => {
-    if (listening) {
-      stop();
-      stopFallbackSTT();
-      socket?.emit("live:stop-listening");
-      setListening(false);
-    } else if (connected && socket) {
+  // Activate browser STT fallback when Deepgram fails
+  useEffect(() => {
+    if (sttState === "failed" && browserSTTSupported) {
+      startFallbackSTT();
+    }
+  }, [sttState, browserSTTSupported, startFallbackSTT]);
+
+  // Toggle captions visibility (connection stays active)
+  const toggleCaptions = useCallback(() => {
+    setCaptionsVisible((prev) => !prev);
+  }, []);
+
+  // Start STT (called once, stays on)
+  const startListening = useCallback(async () => {
+    if (listening) return;
+    if (connected && socket) {
       setupSTTListeners();
       socket.emit("live:start-listening");
       await start();
@@ -327,7 +372,24 @@ export default function LivePage() {
       startFallbackSTT();
       setListening(true);
     }
-  }, [listening, socket, connected, start, stop, setupSTTListeners, startFallbackSTT, stopFallbackSTT, browserSTTSupported]);
+  }, [listening, socket, connected, start, setupSTTListeners, startFallbackSTT, browserSTTSupported]);
+
+  // Retry STT from failed state
+  const handleRetrySTT = useCallback(async () => {
+    if (socket && connected) {
+      socket.emit("live:start-listening");
+      await restart();
+    }
+  }, [socket, connected, restart]);
+
+  // Socket.IO reconnect detection: re-establish STT if socket reconnects
+  useEffect(() => {
+    if (connected && !prevConnectedRef.current && listening && socket) {
+      socket.emit("live:start-listening");
+      restart();
+    }
+    prevConnectedRef.current = connected;
+  }, [connected, listening, socket, restart]);
 
   // Auto-start listening when interview begins (resume dismissed)
   const startListeningOnce = useRef(false);
@@ -335,18 +397,21 @@ export default function LivePage() {
     if (!showResumeInput && !startListeningOnce.current && !listening) {
       startListeningOnce.current = true;
       const id = setTimeout(() => {
-        if (connected && socket) {
-          setupSTTListeners();
-          socket.emit("live:start-listening");
-          start().then(() => setListening(true));
-        } else if (browserSTTSupported) {
-          startFallbackSTT();
-          setListening(true);
-        }
+        startListening();
       }, 500);
       return () => clearTimeout(id);
     }
-  }, [showResumeInput, connected, socket, listening, start, setupSTTListeners, startFallbackSTT, browserSTTSupported]);
+  }, [showResumeInput, listening, startListening]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stop();
+      stopFallbackSTT();
+      socket?.emit("live:stop-listening");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleTextReady = useCallback(
     (text: string) => {
@@ -509,7 +574,7 @@ export default function LivePage() {
         {/* Left: video grid + option selector below */}
         <div className="flex-1 flex flex-col min-h-0 gap-2">
           {/* Video tiles */}
-          <div className="flex-1 grid grid-cols-3 gap-2 min-h-0">
+          <div className="flex-1 grid grid-cols-3 gap-2 min-h-0 relative">
             {/* Interviewer */}
             <div className="relative bg-black rounded-xl overflow-hidden group">
               <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -577,6 +642,17 @@ export default function LivePage() {
                 <span className="text-[11px] text-white bg-black/60 px-2 py-0.5 rounded">Panel Member</span>
               </div>
             </div>
+
+            {/* Closed captions overlay */}
+            {captionsVisible && (
+              <ClosedCaptions
+                interimText={interimText}
+                recentFinals={recentFinals}
+                sttState={sttState}
+                silenceDuration={silenceDuration}
+                onRetry={handleRetrySTT}
+              />
+            )}
           </div>
 
           {/* ── Primary input area ── */}
@@ -876,16 +952,15 @@ export default function LivePage() {
             </svg>
           </button>
 
-          {/* Captions / Listening */}
+          {/* Captions visibility toggle (STT stays always-on) */}
           <button
-            onClick={toggleListening}
-            disabled={!connected}
+            onClick={toggleCaptions}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
-              listening ? "bg-[#0077b6] hover:bg-[#023e8a]" : "bg-[#caf0f8] hover:bg-[#ade8f4]"
-            } disabled:opacity-40`}
-            title={listening ? "Stop listening" : "Start listening"}
+              captionsVisible ? "bg-[#0077b6] hover:bg-[#023e8a]" : "bg-[#caf0f8] hover:bg-[#ade8f4]"
+            }`}
+            title={captionsVisible ? "Hide captions" : "Show captions"}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill={listening ? "white" : "#03045e"}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={captionsVisible ? "white" : "#03045e"}>
               <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z" />
             </svg>
           </button>

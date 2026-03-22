@@ -58,7 +58,36 @@ export interface PuzzleError {
   fallbackUsed: boolean;
 }
 
+export interface ModuleReport {
+  moduleId: string;
+  moduleTitle: string;
+  questionCount: number;
+  dimensionAnalysis: {
+    dimension: string;
+    average: number;
+    verdict: "strong" | "moderate" | "needs-work";
+  }[];
+  kgSuggestions: {
+    questionType: string;
+    suggestion: string;
+    referencedExperience: string;
+  }[];
+  coachingTips: string[];
+  overallSummary: string;
+  strongestArea: string;
+  weakestArea: string;
+  answers: {
+    questionId: string;
+    questionPrompt: string;
+    answerText: string;
+    score: number;
+    feedbackJson: STARFeedback | PuzzleFeedback;
+  }[];
+  cached: boolean;
+}
+
 // ── Transcript types ──
+
 
 export interface TranscriptSegment {
   id: string;

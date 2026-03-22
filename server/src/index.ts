@@ -12,6 +12,7 @@ import { registerLiveHandlers } from "./handlers/live.handler.js";
 import { registerPuzzleHandlers } from "./handlers/puzzle.handler.js";
 import profileRouter from "./handlers/profile.handler.js";
 import moduleRouter from "./handlers/module.handler.js";
+import reportRouter from "./handlers/report.handler.js";
 
 const app = express();
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -31,6 +32,7 @@ app.get("/health", (_req, res) => {
 
 app.use(profileRouter);
 app.use(moduleRouter);
+app.use(reportRouter);
 
 io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
