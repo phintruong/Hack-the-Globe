@@ -32,6 +32,11 @@ Also provide:
 - 2-3 specific improvements
 - A polished version of their answer
 
+If candidate profile context is provided, use it to:
+- Give personalized suggestions that reference their actual skills and experiences
+- Suggest they draw from specific past roles or projects when their answer is generic
+- Tailor the polished answer to highlight their real strengths
+
 Respond in this exact JSON format:
 {
   "situation": <number>,
@@ -46,8 +51,13 @@ const POLISH_PROMPT = `You are a professional interview coach. Polish the follow
 
 export async function evaluateAnswer(
   question: string,
-  answer: string
+  answer: string,
+  profileContext?: string | null
 ): Promise<STARFeedback> {
+  const profileBlock = profileContext
+    ? `\n\nCandidate Profile:\n${profileContext}`
+    : "";
+
   const [starResult, polishResult] = await Promise.all([
     getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
@@ -55,7 +65,7 @@ export async function evaluateAnswer(
         { role: "system", content: STAR_PROMPT },
         {
           role: "user",
-          content: `Question: ${question}\n\nAnswer: ${answer}`,
+          content: `Question: ${question}\n\nAnswer: ${answer}${profileBlock}`,
         },
       ],
       response_format: { type: "json_object" },
@@ -67,7 +77,7 @@ export async function evaluateAnswer(
         { role: "system", content: POLISH_PROMPT },
         {
           role: "user",
-          content: `Question: ${question}\n\nAnswer: ${answer}`,
+          content: `Question: ${question}\n\nAnswer: ${answer}${profileBlock}`,
         },
       ],
       temperature: 0.5,

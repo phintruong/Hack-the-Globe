@@ -45,6 +45,12 @@ export default function TrainingPage() {
           <div className="h-4 w-px bg-[var(--landing-border)]" />
           <span className="landing-label-inline">Training Mode</span>
           <div className="ml-auto flex items-center gap-3">
+            <Link
+              href="/profile"
+              className="text-xs uppercase tracking-wider border border-[var(--landing-border)] px-3 py-1.5 rounded-sm hover:border-[#0077b6] hover:text-[#0077b6] transition-colors"
+            >
+              Profile
+            </Link>
             {user && (
               <>
                 <span className="text-xs text-[var(--landing-muted)] hidden sm:block">

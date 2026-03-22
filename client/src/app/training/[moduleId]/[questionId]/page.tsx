@@ -147,7 +147,7 @@ export default function PracticePage() {
     setLastAnswer(answer);
     setFeedback(null);
 
-    socket.emit("training:submit", { question, answer });
+    socket.emit("training:submit", { question, answer, userId: user?.id });
 
     socket.once(
       "training:feedback",

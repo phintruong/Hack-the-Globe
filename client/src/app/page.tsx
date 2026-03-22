@@ -16,6 +16,7 @@ export default function Home() {
             <div className="dropdown-menu">
               <Link href="/training" className="dropdown-item">Training Mode</Link>
               <Link href="/live" className="dropdown-item">Live Interview</Link>
+              <Link href="/profile" className="dropdown-item">My Profile</Link>
             </div>
           </div>
           <div className="relative group">
@@ -26,7 +27,6 @@ export default function Home() {
               <a href="#" className="dropdown-item">Non-Profit</a>
             </div>
           </div>
-          <a href="#about" className="nav-btn">Learn More</a>
           <Link href="/auth" className="nav-btn-primary">Login</Link>
         </nav>
       </header>

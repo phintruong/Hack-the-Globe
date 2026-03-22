@@ -9,6 +9,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import { registerTrainingHandlers } from "./handlers/training.handler.js";
 import { registerLiveHandlers } from "./handlers/live.handler.js";
+import profileRouter from "./handlers/profile.handler.js";
 
 const app = express();
 app.use(cors({ origin: "http://localhost:3000" }));
@@ -22,6 +23,8 @@ const io = new Server(httpServer, {
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+app.use(profileRouter);
 
 io.on("connection", (socket) => {
   console.log(`Client connected: ${socket.id}`);
