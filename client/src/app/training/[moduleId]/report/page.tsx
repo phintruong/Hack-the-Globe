@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { Progress } from "@/components/ui/progress";
+import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import type { ModuleReport } from "@/types/index";
 
@@ -130,7 +129,6 @@ function QuestionAccordion({
 
 export default function ReportPage() {
   const params = useParams<{ moduleId: string }>();
-  const router = useRouter();
   const { user } = useAuth();
   const [report, setReport] = useState<ModuleReport | null>(null);
   const [loading, setLoading] = useState(true);

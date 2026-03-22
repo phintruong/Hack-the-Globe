@@ -37,7 +37,7 @@ function computeDimensionAnalysis(
 
   return dims.map((dim) => {
     const scores = answers
-      .map((a) => (a.feedback_json as Record<string, number>)[dim])
+      .map((a) => (a.feedback_json as unknown as Record<string, number>)[dim])
       .filter((v) => typeof v === "number");
     const avg =
       scores.length > 0

@@ -7,13 +7,13 @@ import { getSupabase } from "../lib/supabase.js";
 import type { QuestionType } from "../types/index.js";
 import type { KnowledgeGraph } from "../services/knowledge-graph.service.js";
 
-function computeAvgScore(feedback: { type: string; data: Record<string, unknown> }): number {
-  const d = feedback.data;
+function computeAvgScore(feedback: { type: string; data: unknown }): number {
+  const d = feedback.data as Record<string, number>;
   if (feedback.type === "puzzle") {
-    const vals = [d.reasoning_clarity, d.structure, d.assumptions, d.communication] as number[];
+    const vals = [d.reasoning_clarity, d.structure, d.assumptions, d.communication];
     return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
   }
-  const vals = [d.situation, d.task, d.action, d.result] as number[];
+  const vals = [d.situation, d.task, d.action, d.result];
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 }
 
