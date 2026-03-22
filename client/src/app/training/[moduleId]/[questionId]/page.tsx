@@ -69,19 +69,15 @@ export default function PracticePage() {
   const questionIndexInModule = activeModule.questions.indexOf(activeQuestion);
 
   // Find next question for navigation
+  const isLastInModule = questionIndexInModule + 1 >= activeModule.questions.length;
+
   const getNextQuestionUrl = (): string | null => {
     const curQIdx = questionIndexInModule;
     if (curQIdx + 1 < activeModule.questions.length) {
       return `/training/${activeModule.id}/${activeModule.questions[curQIdx + 1].id}`;
     }
-    const curModIdx = modules.findIndex((m) => m.id === activeModule.id);
-    if (curModIdx + 1 < modules.length) {
-      const nextMod = modules[curModIdx + 1];
-      if (!nextMod.locked) {
-        return `/training/${nextMod.id}/${nextMod.questions[0].id}`;
-      }
-    }
-    return null;
+    // Last question in module → link to report
+    return `/training/${activeModule.id}/report`;
   };
 
   const handleFrame = (video: HTMLVideoElement) => {
@@ -124,6 +120,8 @@ export default function PracticePage() {
       answer,
       userId: user?.id,
       questionType,
+      moduleId: params.moduleId,
+      questionId: params.questionId,
     });
 
     socket.once(
@@ -284,7 +282,7 @@ export default function PracticePage() {
                   </Link>
                   {nextUrl && (
                     <Link href={nextUrl} className="btn-pill flex-1 text-center">
-                      Next Question &#8594;
+                      {isLastInModule ? "View Module Report \u2192" : "Next Question \u2192"}
                     </Link>
                   )}
                 </div>
